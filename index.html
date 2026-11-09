@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wedgewood Weddings · Venue Scheduling</title>
+  <link rel="stylesheet" href="style.css?v=3.6" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Global Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-logo">W</div>
+      <div class="brand-info">
+        <span class="brand-name">WEDGEWOOD</span>
+        <span class="brand-tagline">Venue scheduling</span>
+      </div>
+    </div>
+
+    <nav class="flow-nav">
+      <div class="flow-step active">
+        <span class="step-num">1</span>
+        <span class="step-title">Events</span>
+      </div>
+      <span class="step-sep">·</span>
+      <div class="flow-step">
+        <span class="step-num">2</span>
+        <span class="step-title">Staffing plan</span>
+      </div>
+      <span class="step-sep">·</span>
+      <div class="flow-step">
+        <span class="step-num">3</span>
+        <span class="step-title">Review & publish</span>
+      </div>
+    </nav>
+
+    <div class="header-right">
+      <button class="btn btn-outline btn-sm" id="btn-venue-settings">Venue settings</button>
+    </div>
+  </header>
+
+  <!-- Planning Week Strip -->
+  <section class="planning-strip">
+    <div class="planning-container">
+      <div class="planning-meta">
+        <span class="planning-label">PLANNING WEEK</span>
+        <h2 class="planning-week-title" id="planning-week-title">Loading...</h2>
+      </div>
+
+      <div class="week-picker-control">
+        <label for="week-date-input" class="picker-label">Go to week starting</label>
+        <div class="picker-group">
+          <button class="nav-arrow" id="btn-prev-week" title="Previous week">&larr;</button>
+          <input type="date" id="week-date-input" />
+          <button class="nav-arrow" id="btn-next-week" title="Next week">&rarr;</button>
+          <button class="btn btn-outline btn-sm" id="btn-sync-sf" title="Fetch latest updates from Salesforce directly" style="margin-left: 8px; font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600;">
+            <span id="sync-icon">🔄</span> <span id="sync-text">Sync from SF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5-Week Tabs / Quick Bar -->
+    <div class="week-tabs-container">
+      <div class="week-tabs" id="week-tabs">
+        <!-- Rendered dynamically by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Sub Header Action Bar -->
+  <section class="sub-header-strip">
+    <div class="sub-header-container">
+      <div>
+        <span class="sub-label" id="sub-venue-label">VENUE EVENTS</span>
+        <h1 class="page-title">Review the week's events</h1>
+        <p class="page-subtitle" id="events-count-summary">Loading events from Salesforce...</p>
+      </div>
+      <button class="btn btn-primary" id="btn-continue">Continue to staffing plan &rarr;</button>
+    </div>
+  </section>
+
+  <!-- Main Content 2-Column Grid -->
+  <main class="events-workspace">
+    <!-- Left Column: Events this week -->
+    <aside class="events-sidebar">
+      <div class="sidebar-header" style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3>Events this week</h3>
+          <span class="badge-tag" id="sidebar-count-badge" style="font-weight: 700;">0</span>
+        </div>
+        <div class="sidebar-search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="venue-search-input" placeholder="Search venue or couple..." autocomplete="off" />
+          <button id="btn-clear-search" class="clear-search-btn" title="Clear search" style="display: none;">✕</button>
+        </div>
+        <select id="venue-filter-select" class="venue-select-dropdown">
+          <option value="ALL">🏢 All Venues</option>
+        </select>
+      </div>
+
+      <div class="events-list" id="events-list">
+        <!-- Dynamic Event Cards -->
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Connecting to Salesforce...</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Column: Selected Event Detail Panel -->
+    <section class="event-detail-panel" id="event-detail-panel">
+      <!-- Dynamic Event Details populated by app.js -->
+      <div class="empty-selection-state">
+        <p>Select an event from the left sidebar to view its details.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <span>Connected to Salesforce Org: <strong>wedgewoodweddings</strong></span>
+      <span>Live SOQL Sync · Wedgewood Scheduling V1</span>
+    </div>
+  </footer>
+
+  <script src="app.js?v=3.7"></script>
+</body>
+</html>
