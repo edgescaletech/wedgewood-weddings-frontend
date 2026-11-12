@@ -3,16 +3,19 @@ import { createRoot } from 'react-dom/client';
 import Events, { styles as eventStyles } from './pages/index.jsx';
 import Staffing, { styles as staffingStyles } from './pages/staffing.jsx';
 import Goals, { styles as goalsStyles } from './pages/goals.jsx';
+import Login from './pages/login.jsx';
 import '../style.css';
 
 const pages = {
   events: [Events, eventStyles],
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
+  login: [Login, ""],
 };
 
 function getPage() {
   const path = window.location.pathname;
+  if (['/login', '/login/', '/login/index.html'].includes(path)) return 'login';
   for (const page of ['staffing', 'goals']) {
     if ([`/${page}`, `/${page}/`, `/${page}.html`].includes(path)) {
       if (path !== `/${page}/`) {
@@ -40,6 +43,8 @@ function Page() {
     });
 
     let cancelled = false;
+    if (page === 'login') return () => styleNodes.forEach(node => node.remove());
+
     const startController = async () => {
       try {
         if (page === 'events') {
