@@ -9,6 +9,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         events: resolve(projectDir, 'index.html'),
+        login: resolve(projectDir, 'login/index.html'),
         staffing: resolve(projectDir, 'staffing.html'),
         staffingRoute: resolve(projectDir, 'staffing/index.html'),
         goals: resolve(projectDir, 'goals.html'),

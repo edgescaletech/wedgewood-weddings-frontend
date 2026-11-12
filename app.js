@@ -146,7 +146,11 @@ async function fetchWeeklyEvents(monday, forceRefresh = false) {
     : `${API_BASE_URL}/api/events?week=${isoWeek}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { credentials: 'include' });
+    if (response.status === 401 || response.status === 403) {
+      window.location.assign('/login/');
+      return;
+    }
     if (!response.ok) {
       throw new Error(`Server returned ${response.status}`);
     }
