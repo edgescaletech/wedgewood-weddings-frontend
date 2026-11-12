@@ -1,6 +1,16 @@
-.PHONY: run
+.PHONY: run build preview clean
 
-## run: start the frontend server on http://localhost:3000
+## run: start the React frontend on http://localhost:3000
 run:
-	@echo "Starting frontend at http://localhost:3000 ..."
-	python3 -m http.server 3000
+	npm run dev -- --port 3000
+
+## build: create static assets in dist/
+build:
+	npm run build
+
+## preview: serve the production build on http://localhost:4173
+preview:
+	npm run preview
+
+clean:
+	rm -rf dist

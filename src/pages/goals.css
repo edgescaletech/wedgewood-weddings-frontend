@@ -1,0 +1,220 @@
+body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Top App Header */
+    .app-header {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      background: #15803d;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .venue-picker-header {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .venue-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .venue-sub {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #166534;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    /* Sub Navigation Tabs */
+    .sub-nav-bar {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 24px;
+      display: flex;
+      gap: 24px;
+    }
+
+    .sub-nav-tab {
+      padding: 12px 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .sub-nav-tab.active {
+      color: #166534;
+      font-weight: 800;
+      border-bottom-color: #166534;
+    }
+
+    /* Main Container */
+    .goals-container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 24px;
+    }
+
+    .goals-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .goals-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .section-subtitle {
+      font-size: 15px;
+      font-weight: 800;
+      color: #1e293b;
+      margin: 16px 0 12px 0;
+    }
+
+    .year-selector-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .year-select {
+      padding: 6px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    .accounting-link {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #166534;
+      text-decoration: underline;
+    }
+
+    .workbook-link {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: underline;
+    }
+
+    .description-text {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+
+    /* Goals Table */
+    .goals-table-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .goals-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12px;
+    }
+
+    .goals-table thead th {
+      background: #f1f5f9;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .goals-table tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      font-size: 12px;
+    }
+
+    .goals-table tbody tr:hover {
+      background: #fafafa;
+    }
+
+    .month-title {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .view-weeks-link {
+      display: block;
+      font-size: 10.5px;
+      color: #166534;
+      text-decoration: underline;
+      margin-top: 2px;
+    }
+
+    .date-range-sub {
+      font-size: 10.5px;
+      color: #94a3b8;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .placeholder-dash {
+      color: #94a3b8;
+    }
+
+    .staffed-note {
+      color: #94a3b8;
+      font-size: 11px;
+    }

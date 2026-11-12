@@ -152,6 +152,11 @@ async function fetchWeeklyEvents(monday, forceRefresh = false) {
     }
     const data = await response.json();
     state.events = data.events || [];
+    try {
+      localStorage.setItem('wedgewood_week_events', JSON.stringify(state.events));
+      sessionStorage.setItem('currentWeekEvents', JSON.stringify(state.events));
+      localStorage.setItem('wedgewood_active_monday', toISODate(monday));
+    } catch (e) {}
     
     // Auto-select the first event if available
     if (state.events.length > 0) {
@@ -360,10 +365,27 @@ function renderSidebarEvents() {
 
     card.addEventListener('click', () => {
       state.selectedEventId = evt.id;
+      try {
+        localStorage.setItem('wedgewood_selected_event', JSON.stringify(evt));
+        localStorage.setItem('wedgewood_selected_event_id', evt.id);
+        sessionStorage.setItem('currentSelectedEvent', JSON.stringify(evt));
+      } catch (e) {}
+
       // Re-highlight active card in sidebar
       document.querySelectorAll('.event-item-card').forEach(el => el.classList.remove('active'));
       card.classList.add('active');
       renderEventDetail();
+
+      // Update link targets
+      const mondayStr = state.currentMonday ? toISODate(state.currentMonday) : '';
+      const continueBtn = document.getElementById('btn-continue');
+      if (continueBtn) {
+        continueBtn.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayStr}`;
+      }
+      const step2Nav = document.querySelector('.flow-step[href*="/staffing/"]');
+      if (step2Nav) {
+        step2Nav.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayStr}`;
+      }
     });
 
     container.appendChild(card);
@@ -707,6 +729,32 @@ function renderEventDetail() {
     return;
   }
 
+  // Persist selected event and current week data for Staffing Plan (Step 2)
+  try {
+    localStorage.setItem('wedgewood_selected_event', JSON.stringify(evt));
+    localStorage.setItem('wedgewood_week_events', JSON.stringify(state.events));
+    sessionStorage.setItem('currentSelectedEvent', JSON.stringify(evt));
+    sessionStorage.setItem('currentWeekEvents', JSON.stringify(state.events));
+    if (state.currentMonday) {
+      localStorage.setItem('wedgewood_active_monday', toISODate(state.currentMonday));
+      sessionStorage.setItem('currentMondayISO', toISODate(state.currentMonday));
+    }
+  } catch (err) {
+    console.warn('Storage warning:', err);
+  }
+
+  // Dynamically point Continue buttons to /staffing/ with event context
+  const continueBtn = document.getElementById('btn-continue');
+  if (continueBtn) {
+    const mondayISO = state.currentMonday ? toISODate(state.currentMonday) : '';
+    continueBtn.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayISO}`;
+  }
+  const step2Nav = document.querySelector('.flow-step[href="/staffing/"]');
+  if (step2Nav) {
+    const mondayISO = state.currentMonday ? toISODate(state.currentMonday) : '';
+    step2Nav.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayISO}`;
+  }
+
   const propertyName = evt.venueProperty || evt.venue || 'Venue';
   const ceremonySpace = evt.ceremonyLocation || '';
   const barArea = evt.barLocation || '';
@@ -944,6 +992,15 @@ function renderEventDetail() {
       setTimeout(() => { saveBtn.textContent = originalText; }, 1800);
     });
   }
+
+  // View event shifts -> navigate to Step 2 (Staffing Plan)
+  const viewShiftsBtn = document.getElementById('btn-view-shifts');
+  if (viewShiftsBtn) {
+    viewShiftsBtn.addEventListener('click', () => {
+      const mondayISO = state.currentMonday ? toISODate(state.currentMonday) : '';
+      window.location.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayISO}`;
+    });
+  }
 }
 
 function renderSidebarLoading() {
@@ -1050,15 +1107,82 @@ function setupEventListeners() {
       fetchWeeklyEvents(state.currentMonday, true);
     });
   }
+
+  // Handle Continue to staffing plan button
+  const continueBtn = document.getElementById('btn-continue');
+  if (continueBtn) {
+    continueBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const evt = state.events.find(ev => ev.id === state.selectedEventId) || state.events[0];
+      if (evt) {
+        try {
+          localStorage.setItem('wedgewood_selected_event', JSON.stringify(evt));
+          localStorage.setItem('wedgewood_selected_event_id', evt.id);
+          localStorage.setItem('wedgewood_week_events', JSON.stringify(state.events));
+          sessionStorage.setItem('currentSelectedEvent', JSON.stringify(evt));
+          sessionStorage.setItem('currentWeekEvents', JSON.stringify(state.events));
+        } catch (err) {}
+        const mondayISO = state.currentMonday ? toISODate(state.currentMonday) : '';
+        window.location.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayISO}`;
+      } else {
+        window.location.href = '/staffing/';
+      }
+    });
+  }
+
+  // Handle Step 2 Nav link
+  const step2Nav = document.getElementById('step2Nav');
+  if (step2Nav) {
+    step2Nav.addEventListener('click', (e) => {
+      e.preventDefault();
+      const evt = state.events.find(ev => ev.id === state.selectedEventId) || state.events[0];
+      if (evt) {
+        try {
+          localStorage.setItem('wedgewood_selected_event', JSON.stringify(evt));
+          localStorage.setItem('wedgewood_selected_event_id', evt.id);
+          localStorage.setItem('wedgewood_week_events', JSON.stringify(state.events));
+          sessionStorage.setItem('currentSelectedEvent', JSON.stringify(evt));
+          sessionStorage.setItem('currentWeekEvents', JSON.stringify(state.events));
+        } catch (err) {}
+        const mondayISO = state.currentMonday ? toISODate(state.currentMonday) : '';
+        window.location.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayISO}`;
+      } else {
+        window.location.href = '/staffing/';
+      }
+    });
+  }
 }
 
 
+
+// Global navigation helper invoked from HTML onclick
+window.navigateToStaffing = function(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  const evtId = state.selectedEventId;
+  const evt = state.events.find(ev => ev.id === evtId) || state.events[0];
+  if (evt) {
+    try {
+      localStorage.setItem('wedgewood_selected_event', JSON.stringify(evt));
+      localStorage.setItem('wedgewood_selected_event_id', evt.id);
+      localStorage.setItem('wedgewood_week_events', JSON.stringify(state.events));
+      sessionStorage.setItem('currentSelectedEvent', JSON.stringify(evt));
+      sessionStorage.setItem('currentWeekEvents', JSON.stringify(state.events));
+    } catch (err) {}
+    const mondayISO = state.currentMonday ? toISODate(state.currentMonday) : '';
+    window.location.href = `/staffing/?eventId=${encodeURIComponent(evt.id)}&week=${mondayISO}`;
+  } else {
+    window.location.href = '/staffing/';
+  }
+};
 
 // ============================================================================
 // Application Boot
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+const initializeEventsPage = () => {
   setupEventListeners();
 
   // Support ?week=YYYY-MM-DD in the URL for manual override (e.g. ?week=2026-10-05)
@@ -1077,4 +1201,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   setWeek(getMonday(initialDate));
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeEventsPage, { once: true });
+} else {
+  initializeEventsPage();
+}
