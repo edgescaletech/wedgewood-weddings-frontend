@@ -15,7 +15,7 @@ const pages = {
 
 function getPage() {
   const path = window.location.pathname;
-  if (['/login', '/login/', '/login/index.html'].includes(path)) return 'login';
+  if (['/login', '/login/', '/login/index.html', '/reset-password', '/reset-password/', '/reset-password/index.html'].includes(path)) return 'login';
   for (const page of ['staffing', 'goals']) {
     if ([`/${page}`, `/${page}/`, `/${page}.html`].includes(path)) {
       if (path !== `/${page}/`) {

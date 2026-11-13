@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://wedgewood-backend-dev.onrender.com/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://wedgewood-backend-dev.onrender.com/auth/:path*"
     }
   ]
 }
