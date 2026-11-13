@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Events, { styles as eventStyles } from './pages/index.jsx';
 import Staffing, { styles as staffingStyles } from './pages/staffing.jsx';
@@ -29,6 +29,48 @@ function getPage() {
 }
 
 const page = getPage();
+
+const apiBase = window.API_BASE_URL || (
+  ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? `${window.location.protocol}//${window.location.hostname}:8080`
+    : ''
+);
+
+// Check the server session before rendering or starting application controllers.
+function ProtectedPage() {
+  const [status, setStatus] = useState('checking');
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function checkSession() {
+      try {
+        const response = await fetch(`${apiBase}/auth/me`, {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (response.status === 401 || response.status === 403) {
+          window.location.replace('/login/');
+          return;
+        }
+        setStatus(response.ok ? 'authenticated' : 'unavailable');
+      } catch (error) {
+        if (error.name !== 'AbortError') setStatus('unavailable');
+      }
+    }
+
+    checkSession();
+    return () => controller.abort();
+  }, [attempt]);
+
+  if (status === 'authenticated') return <Page />;
+  if (status === 'unavailable') {
+    return <main role="alert">Unable to check your session. <button onClick={() => { setStatus('checking'); setAttempt(attempt + 1); }}>Try again</button></main>;
+  }
+  return <main role="status">Checking your session…</main>;
+}
 
 function Page() {
   const [Content, css] = pages[page];
@@ -70,4 +112,4 @@ function Page() {
   return <div className={`react-page react-page-${page}`} ><Content /></div>;
 }
 
-createRoot(document.getElementById('root')).render(<Page />);
+createRoot(document.getElementById('root')).render(page === 'login' ? <Page /> : <ProtectedPage />);

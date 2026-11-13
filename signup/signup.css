@@ -1,0 +1,99 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Plus Jakarta Sans", sans-serif; color: #18221c; }
+.signup-layout { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; }
+.signup-main { display: flex; flex-direction: column; padding: 32px clamp(28px, 6vw, 88px); }
+.signup-content { width: min(100%, 440px); margin: auto; padding: 30px 0; }
+.eyebrow { color: #587b67; font-size: 10px; font-weight: 700; letter-spacing: .15em; }
+.signup-content h1, .signup-aside h2 { font-size: clamp(33px, 3.5vw, 48px); line-height: 1.17; letter-spacing: -.045em; font-weight: 600; }
+.signup-content h1 em, .signup-aside h2 em { display: block; font-family: Georgia, serif; font-weight: 400; color: #668d75; }
+.intro, .signup-card p { color: #66746c; font-size: 13px; line-height: 1.7; }
+.signup-card { border: 1px solid #e0e8e2; border-radius: 9px; padding: 27px; margin-top: 30px; box-shadow: 0 9px 26px rgba(28, 59, 41, .04); }
+.signup-card h2 { font-size: 17px; margin: 0; }
+.signup-card label { display: block; font-size: 12px; font-weight: 700; color: #3b5243; margin: 15px 0 7px; }
+.signup-card input { width: 100%; height: 44px; border: 1px solid #cedbd1; border-radius: 5px; padding: 10px 12px; font: inherit; font-size: 14px; }
+.signup-card input:focus-visible, .signup-button:focus-visible { outline: 2px solid #126f88; outline-offset: 2px; }
+.signup-button { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 13px 15px; border: 0; border-radius: 5px; background: #1e4a38; color: white; text-decoration: none; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.signup-button:hover { background: #16392b; }
+.signup-button:disabled { opacity: .65; cursor: wait; }
+.signup-button span { font-size: 19px; }
+.signup-card .signup-error { color: #8a3c31; background: #fdf1ed; border: 1px solid #efd4cb; padding: 10px; border-radius: 4px; }
+.signup-signin a { color: #1e4a38; font-weight: 700; }
+.generate-password { margin-top: 10px; padding: 0; border: 0; background: none; color: #1e4a38; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: underline; }
+.signup-card .password-generated { margin: 8px 0 0; font-size: 12px; }
+.signup-card .password-saved { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.signup-card .password-saved input { width: 16px; height: 16px; margin: 0; flex: none; }
+footer { display: flex; justify-content: space-between; gap: 16px; color: #9aa59d; font-size: 10px; }
+.signup-aside { display: flex; flex-direction: column; justify-content: center; padding: 42px clamp(38px, 5vw, 76px); background: #183f30; color: #f5f5e9; }
+.signup-aside > div { width: min(100%, 440px); margin: auto; }
+.signup-aside .eyebrow { color: #b7cfbb; }
+.signup-aside h2 em { color: #bad2b8; }
+.signup-aside div > p:last-child { color: #bbcec0; font-size: 13px; line-height: 1.8; max-width: 330px; }
+.signup-aside small { color: #a8c0ad; font-size: 9px; font-weight: 700; letter-spacing: .14em; }
+@media (max-width: 800px) { .signup-layout { grid-template-columns: 1fr; } .signup-aside { display: none; } }
+@media (max-width: 480px) { .signup-main { padding: 25px 23px; } .signup-card { padding: 23px; } footer span { display: none; } }
+
+/* Keep both columns within the viewport and tighten spacing on short screens. */
+.signup-layout {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.signup-main,
+.signup-aside {
+  min-height: 0;
+}
+
+.signup-main {
+  padding-top: clamp(12px, 2vh, 24px);
+  padding-bottom: clamp(12px, 2vh, 24px);
+}
+
+.signup-content {
+  padding: clamp(8px, 1.5vh, 20px) 0;
+}
+
+.signup-content h1 {
+  margin: clamp(8px, 1.6vh, 20px) 0;
+}
+
+.signup-card {
+  margin-top: clamp(12px, 2vh, 25px);
+  padding: clamp(14px, 2.3vh, 27px);
+}
+
+.signup-card label {
+  margin-top: clamp(8px, 1.2vh, 15px);
+}
+
+.signup-button {
+  margin-top: clamp(10px, 1.7vh, 20px);
+}
+
+/* Keep the generated-password confirmation compact inside the same viewport. */
+.signup-card-generated {
+  padding-top: clamp(12px, 1.8vh, 20px);
+  padding-bottom: clamp(12px, 1.8vh, 20px);
+}
+
+.signup-card-generated label {
+  margin-top: clamp(6px, 0.9vh, 10px);
+}
+
+.signup-card-generated .password-saved {
+  margin-bottom: 0;
+  line-height: 1.3;
+}
+
+.signup-card-generated .signup-signin {
+  margin-bottom: 0;
+}
+
+/* Let very short viewports scroll rather than clipping form controls. */
+@media (max-height: 650px) {
+  .signup-layout {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}

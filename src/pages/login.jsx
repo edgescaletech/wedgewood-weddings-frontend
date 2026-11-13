@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import PasswordInput from "../components/PasswordInput.jsx";
 import "./login.css";
 
 const apiBase =
@@ -357,18 +358,16 @@ export default function Login() {
                     </p>
                   )}
                   <label htmlFor="new-password">New password</label>
-                  <input
+                  <PasswordInput
                     id="new-password"
-                    type="password"
                     autoComplete="new-password"
                     required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                   />
                   <label htmlFor="confirm-password">Confirm new password</label>
-                  <input
+                  <PasswordInput
                     id="confirm-password"
-                    type="password"
                     autoComplete="new-password"
                     required
                     value={confirmPassword}
@@ -456,9 +455,8 @@ export default function Login() {
                     onChange={(event) => setEmail(event.target.value)}
                   />
                   <label htmlFor="login-password">Password</label>
-                  <input
+                  <PasswordInput
                     id="login-password"
-                    type="password"
                     autoComplete="current-password"
                     required
                     value={password}
@@ -486,6 +484,9 @@ export default function Login() {
                 >
                   Forgot password?
                 </button>
+                <p className="login-help">
+                  Don’t have an account? <a href="/signup/">Create one</a>
+                </p>
                 {status === "logout-error" && (
                   <button className="login-secondary" onClick={signOut}>
                     Try signing out again
