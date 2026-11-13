@@ -376,15 +376,25 @@ export function mount() {
         }
       }
 
+      // Send the session cookie and return to login if the session is no longer valid.
+      function fetchEvents(url) {
+        return fetch(url, { credentials: 'include' }).then(response => {
+          if (response.status === 401 || response.status === 403) {
+            window.location.replace('/login/');
+            throw new Error('Session is no longer available');
+          }
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        });
+      }
+
       function loadEventDetail(id) {
-        return fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(id)}`)
-          .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); });
+        return fetchEvents(`${API_BASE_URL}/api/events/${encodeURIComponent(id)}`);
       }
 
       function loadWeekEvents(weekStart) {
         const query = new URLSearchParams({ week: weekStart });
-        return fetch(`${API_BASE_URL}/api/events?${query.toString()}`)
-          .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        return fetchEvents(`${API_BASE_URL}/api/events?${query.toString()}`)
           .then(data => data.events || []);
       }
 

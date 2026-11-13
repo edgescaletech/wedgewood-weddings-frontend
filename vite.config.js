@@ -10,6 +10,8 @@ export default defineConfig({
       input: {
         events: resolve(projectDir, 'index.html'),
         login: resolve(projectDir, 'login/index.html'),
+        signup: resolve(projectDir, 'signup/index.html'),
+        resetPassword: resolve(projectDir, 'reset-password/index.html'),
         staffing: resolve(projectDir, 'staffing.html'),
         staffingRoute: resolve(projectDir, 'staffing/index.html'),
         goals: resolve(projectDir, 'goals.html'),
