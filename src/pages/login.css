@@ -56,3 +56,60 @@
 .login-main {
   overflow-y: visible;
 }
+
+/* Fit sign-in and recovery content within the viewport on typical screens. */
+.login-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.login-main,
+.login-aside {
+  min-height: 0;
+}
+
+.login-main {
+  padding-top: clamp(12px, 2vh, 24px);
+  padding-bottom: clamp(12px, 2vh, 24px);
+}
+
+.login-content {
+  padding: clamp(8px, 1.5vh, 20px) 0;
+}
+
+.login-content h1 {
+  margin: clamp(8px, 1.5vh, 18px) 0;
+}
+
+.login-card {
+  margin-top: clamp(12px, 2vh, 25px);
+  padding: clamp(14px, 2.3vh, 27px);
+}
+
+.login-card-rule {
+  margin: clamp(10px, 1.6vh, 18px) 0;
+}
+
+.login-form {
+  margin-top: clamp(8px, 1.2vh, 15px);
+}
+
+.login-form label,
+.login-secondary,
+.login-help {
+  margin-top: clamp(8px, 1.3vh, 15px);
+}
+
+.login-button {
+  margin-top: clamp(10px, 1.7vh, 20px);
+}
+
+/* Keep every control reachable when the viewport is too short to fit the form. */
+@media (max-height: 650px) {
+  .login-shell {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}
