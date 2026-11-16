@@ -87,7 +87,7 @@ function Page() {
     const startController = async () => {
       try {
         if (page === 'events') {
-          await import('../app.js');
+          // Welcome overview screen — no legacy controller needed
         } else if (page === 'staffing') {
           const controller = await import('./legacy/staffing.js');
           if (!cancelled) controller.mount();
