@@ -25,8 +25,9 @@ function getPage() {
       return page;
     }
   }
-  if (path === '/index.html') history.replaceState(history.state, '', `/${location.search}${location.hash}`);
-  return 'events';
+  // Default route: go directly to staffing plan
+  history.replaceState(history.state, '', `/staffing/${location.search}${location.hash}`);
+  return 'staffing';
 }
 
 const page = getPage();
