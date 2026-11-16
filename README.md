@@ -4,6 +4,17 @@ React frontend for the venue scheduling prototype. Existing page markup and page
 
 ## Run locally
 
+Copy `.env.example` to `.env` before starting the frontend:
+
+```sh
+cp .env.example .env
+```
+
+Set `VITE_API_BASE_URL` to your backend URL (for example, `http://localhost:8080` locally). Every page uses this shared setting. Leave it empty to send `/api` and `/auth` requests to the frontend origin through a reverse proxy, including the existing Vercel rewrites. The frontend no longer infers a backend address from the browser hostname or reads `window.API_BASE_URL`.
+
+Restart Vite after changing `.env`. For deployment, set the value in the build environment and rebuild; it is embedded in the static files. `VITE_*` values are public, so never include WorkOS keys, database credentials, or other secrets. Keep the backend `APP_URL` set to the frontend origin and use same-site hosts for session cookies.
+
+
 1. Start the Go backend. By default it listens on `http://localhost:8080`.
 2. From this directory, install dependencies once and start the frontend:
 
@@ -16,7 +27,6 @@ React frontend for the venue scheduling prototype. Existing page markup and page
 
 For temporary signup, open `http://localhost:3000/signup/`, create an account, then sign in and complete email verification if prompted. The local account is created on the first successful sign-in. To remove signup, delete the `signup/` directory and its entry in `vite.config.js`, and disable the backend `/auth/signup` route as described in the backend README.
 
-The frontend uses the Go API at `http://localhost:8080` when running locally. In deployment, configure `window.API_BASE_URL` for the backend environment.
 
 The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login, signup, and password recovery remain public.
 

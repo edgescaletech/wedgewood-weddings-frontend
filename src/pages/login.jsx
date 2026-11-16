@@ -1,12 +1,9 @@
+import { API_BASE_URL as apiBase } from "../config.js";
 import React, { useEffect, useState } from "react";
 import PasswordInput from "../components/PasswordInput.jsx";
 import "./login.css";
 
-const apiBase =
-  window.API_BASE_URL ||
-  (["localhost", "127.0.0.1"].includes(window.location.hostname)
-    ? `${window.location.protocol}//${window.location.hostname}:8080`
-    : "");
+
 
 // The reset entry page removes the token from the URL before other resources load.
 const isResetPage = window.location.pathname.startsWith("/reset-password");

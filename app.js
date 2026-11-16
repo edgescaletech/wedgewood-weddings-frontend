@@ -1,16 +1,9 @@
+import { API_BASE_URL } from "./src/config.js";
+
 /**
  * Wedgewood Weddings · Venue Scheduling Frontend Controller
  * Connects directly to Go backend (/api/events) backed by live Salesforce data.
  */
-
-// Configurable API base URL:
-// - When running frontend independently in local dev (e.g. port 3000, 5500), calls backend at :8080
-// - In production, can be set via window.API_BASE_URL or defaults to current origin
-const API_BASE_URL = window.API_BASE_URL || (
-  window.location.port !== '8080' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8080'
-    : ''
-);
 
 // Application State
 const state = {

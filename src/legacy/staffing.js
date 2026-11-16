@@ -1,11 +1,6 @@
-export function mount() {
-// Configurable API Base URL pointing to Go server (:8080) when frontend is on :3000
-    const API_BASE_URL = window.API_BASE_URL || (
-      window.location.port !== '8080' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:8080'
-        : ''
-    );
+import { API_BASE_URL } from "../config.js";
 
+export function mount() {
     // State management
     let currentEvent = null;
     let weekEvents = [];

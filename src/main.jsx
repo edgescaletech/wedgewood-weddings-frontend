@@ -1,3 +1,4 @@
+import { API_BASE_URL as apiBase } from "./config.js";
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Events, { styles as eventStyles } from './pages/index.jsx';
@@ -30,11 +31,7 @@ function getPage() {
 
 const page = getPage();
 
-const apiBase = window.API_BASE_URL || (
-  ['localhost', '127.0.0.1'].includes(window.location.hostname)
-    ? `${window.location.protocol}//${window.location.hostname}:8080`
-    : ''
-);
+
 
 // Check the server session before rendering or starting application controllers.
 function ProtectedPage() {

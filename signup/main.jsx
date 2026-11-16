@@ -1,13 +1,10 @@
+import { API_BASE_URL as apiBase } from "../src/config.js";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import PasswordInput from "../src/components/PasswordInput.jsx";
 import "./signup.css";
 
-const apiBase =
-  window.API_BASE_URL ||
-  (["localhost", "127.0.0.1"].includes(window.location.hostname)
-    ? `${window.location.protocol}//${window.location.hostname}:8080`
-    : "");
+
 
 // This temporary page creates the identity; the existing login handles verification.
 function Signup() {
