@@ -48,7 +48,8 @@ function Signup() {
       return;
     }
     if (generated && !passwordSaved) {
-      setError("Please save your generated password before creating your account.");
+      setError("Please save your generated password and check the box before creating your account.");
+      event.currentTarget.elements.namedItem("passwordSaved")?.focus();
       return;
     }
 
@@ -100,13 +101,15 @@ function Signup() {
                   <button className="generate-password" type="button" onClick={generatePassword}>Generate password</button>
                   {generated && (
                     <label className="password-saved">
-                      <input type="checkbox" checked={passwordSaved} onChange={(event) => setPasswordSaved(event.target.checked)} required />
+                      {/* Validate on submit so the warning uses our readable inline error,
+                          rather than the browser's native checkbox validation popup. */}
+                      <input name="passwordSaved" type="checkbox" checked={passwordSaved} aria-describedby={error ? "signup-error" : undefined} onChange={(event) => { setPasswordSaved(event.target.checked); setError(""); }} />
                       <span>I saved my generated password (use the eye to view it).</span>
                     </label>
                   )}
                   <label htmlFor="confirmation">Confirm password</label>
                   <PasswordInput id="confirmation" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required maxLength={1024} />
-                  {error && <p className="signup-error" role="alert">{error}</p>}
+                  {error && <p id="signup-error" className="signup-error" role="alert">{error}</p>}
                   <button className="signup-button" type="submit" disabled={busy}>{busy ? "Creating account…" : "Create account"}<span>→</span></button>
                 </form>
                 <p className="signup-signin">Already have an account? <a href="/login">Sign in</a></p>
