@@ -1,123 +1,171 @@
 import React from "react";
 
-export const styles = "";
+export const styles = `
+.welcome-screen {
+  min-height: 100vh;
+  background-color: #104737;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 60px 80px 48px;
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+.welcome-content {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.welcome-tag {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 24px;
+}
+
+.welcome-headline {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 48px 0;
+  color: #ffffff;
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 48px;
+}
+
+.welcome-card {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  padding: 24px 28px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.welcome-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.welcome-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #ffffff;
+}
+
+.welcome-card p {
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+.welcome-footer {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+}
+
+.welcome-footer-note {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.btn-start-scheduling {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffffff;
+  color: #104737;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-start-scheduling:hover {
+  background-color: #f3f7f5;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .welcome-screen {
+    padding: 32px 24px;
+  }
+  .welcome-headline {
+    font-size: 34px;
+  }
+  .welcome-grid {
+    grid-template-columns: 1fr;
+  }
+  .welcome-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+`;
 
 export default function IndexPage() {
-  return (<>
-<header className={"app-header"}>
-    <div className={"header-left"}>
-      <div className={"brand-logo"}>{"W"}</div>
-      <div className={"brand-info"}>
-        <span className={"brand-name"}>{"WEDGEWOOD"}</span>
-        <span className={"brand-tagline"}>{"Venue scheduling"}</span>
-      </div>
-    </div>
+  return (
+    <div className="welcome-screen">
+      <div className="welcome-content">
+        <div className="welcome-tag">THE WEDGEWOOD SCHEDULING APP</div>
+        <h1 className="welcome-headline">
+          Less time on scheduling.<br />
+          More time with your team.
+        </h1>
 
-    <nav className={"flow-nav"}>
-      <div className={"flow-step active"}>
-        <span className={"step-num"}>{"1"}</span>
-        <span className={"step-title"}>{"Events"}</span>
-      </div>
-      <span className={"step-sep"}>{"·"}</span>
-      <a href={"/staffing/"} className={"flow-step"} id={"step2Nav"} style={{"textDecoration": "none", "color": "inherit"}}>
-        <span className={"step-num"}>{"2"}</span>
-        <span className={"step-title"}>{"Staffing plan"}</span>
-      </a>
-      <span className={"step-sep"}>{"·"}</span>
-      <div className={"flow-step"}>
-        <span className={"step-num"}>{"3"}</span>
-        <span className={"step-title"}>{"Review & publish"}</span>
-      </div>
-    </nav>
+        <div className="welcome-grid">
+          <div className="welcome-card">
+            <h3>Everything together</h3>
+            <p>Event details, BEOs, availability and time off.</p>
+          </div>
 
-    <div className={"header-right"}>
-      <button className={"btn btn-outline btn-sm"} id={"btn-venue-settings"}>{"Venue settings"}</button>
-    </div>
-  </header>
+          <div className="welcome-card">
+            <h3>Easier scheduling</h3>
+            <p>A visual calendar. Shifts you can edit directly.</p>
+          </div>
 
-  
-  <section className={"planning-strip"}>
-    <div className={"planning-container"}>
-      <div className={"planning-meta"}>
-        <span className={"planning-label"}>{"PLANNING WEEK"}</span>
-        <h2 className={"planning-week-title"} id={"planning-week-title"}>{"Loading..."}</h2>
-      </div>
+          <div className="welcome-card">
+            <h3>Checks as you go</h3>
+            <p>Catch conflicts and keep labor goals in view.</p>
+          </div>
 
-      <div className={"week-picker-control"}>
-        <label htmlFor={"week-date-input"} className={"picker-label"}>{"Go to week starting"}</label>
-        <div className={"picker-group"}>
-          <button className={"nav-arrow"} id={"btn-prev-week"} title={"Previous week"}>{"←"}</button>
-          <input type={"date"} id={"week-date-input"} />
-          <button className={"nav-arrow"} id={"btn-next-week"} title={"Next week"}>{"→"}</button>
-          <button className={"btn btn-outline btn-sm"} id={"btn-sync-sf"} title={"Fetch latest updates from Salesforce directly"} style={{"marginLeft": "8px", "fontSize": "12px", "padding": "6px 12px", "display": "inline-flex", "alignItems": "center", "gap": "5px", "fontWeight": "600"}}>
-            <span id={"sync-icon"}>{"🔄"}</span>{" "}<span id={"sync-text"}>{"Sync from SF"}</span>
-          </button>
+          <div className="welcome-card">
+            <h3>Publish once</h3>
+            <p>Send shifts to ADP without re-entry.</p>
+          </div>
         </div>
       </div>
+
+      <footer className="welcome-footer">
+        <span className="welcome-footer-note">
+          Early designs · Built with feedback from Wedgewood GMs
+        </span>
+        <a href="/staffing/" className="btn-start-scheduling">
+          Start scheduling →
+        </a>
+      </footer>
     </div>
-
-    
-    <div className={"week-tabs-container"}>
-      <div className={"week-tabs"} id={"week-tabs"}>
-        
-      </div>
-    </div>
-  </section>
-
-  
-  <section className={"sub-header-strip"}>
-    <div className={"sub-header-container"}>
-      <div>
-        <span className={"sub-label"} id={"sub-venue-label"}>{"VENUE EVENTS"}</span>
-        <h1 className={"page-title"}>{"Review the week's events"}</h1>
-        <p className={"page-subtitle"} id={"events-count-summary"}>{"Loading events from Salesforce..."}</p>
-      </div>
-      <a href={"/staffing/"} className={"btn btn-primary"} id={"btn-continue"} style={{"textDecoration": "none", "display": "inline-flex", "alignItems": "center"}}>{"Continue to staffing plan →"}</a>
-    </div>
-  </section>
-
-  
-  <main className={"events-workspace"}>
-    
-    <aside className={"events-sidebar"}>
-      <div className={"sidebar-header"} style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
-        <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center"}}>
-          <h3>{"Events this week"}</h3>
-          <span className={"badge-tag"} id={"sidebar-count-badge"} style={{"fontWeight": "700"}}>{"0"}</span>
-        </div>
-        <div className={"sidebar-search-box"}>
-          <span className={"search-icon"}>{"🔍"}</span>
-          <input type={"text"} id={"venue-search-input"} placeholder={"Search venue or couple..."} autoComplete={"off"} />
-          <button id={"btn-clear-search"} className={"clear-search-btn"} title={"Clear search"} style={{"display": "none"}}>{"✕"}</button>
-        </div>
-        <select id={"venue-filter-select"} className={"venue-select-dropdown"}>
-          <option value={"ALL"}>{"🏢 All Venues"}</option>
-        </select>
-      </div>
-
-      <div className={"events-list"} id={"events-list"}>
-        
-        <div className={"loading-state"}>
-          <div className={"spinner"}></div>
-          <p>{"Connecting to Salesforce..."}</p>
-        </div>
-      </div>
-    </aside>
-
-    
-    <section className={"event-detail-panel"} id={"event-detail-panel"}>
-      
-      <div className={"empty-selection-state"}>
-        <p>{"Select an event from the left sidebar to view its details."}</p>
-      </div>
-    </section>
-  </main>
-
-  <footer className={"app-footer"}>
-    <div className={"footer-container"}>
-      <span>{"Connected to Salesforce Org: "}<strong>{"wedgewoodweddings"}</strong></span>
-      <span>{"Live SOQL Sync · Wedgewood Scheduling V1"}</span>
-    </div>
-  </footer>
-  </>);
+  );
 }
