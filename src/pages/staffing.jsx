@@ -1,288 +1,301 @@
-import React from "react";
-
-import styles from "./staffing.css?inline";
+import React, { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../config.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import AppHeader from '../components/Header/AppHeader.jsx';
+import StatusBanner from '../components/Schedule/StatusBanner.jsx';
+import LaborGoalsAccordion from '../components/Schedule/LaborGoalsAccordion.jsx';
+import WeekRibbon from '../components/Schedule/WeekRibbon.jsx';
+import DayActionBar from '../components/Schedule/DayActionBar.jsx';
+import EventDetailsModal from '../components/Schedule/EventDetailsModal.jsx';
+import TimelineGrid from '../components/Schedule/TimelineGrid.jsx';
+import WeekScheduleGrid from '../components/Schedule/WeekScheduleGrid.jsx';
+import styles from './staffing.css?inline';
 export { styles };
 
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getMondayFor(dateValue) {
+  const date = dateValue ? new Date(`${dateValue}T12:00:00`) : new Date();
+  if (Number.isNaN(date.getTime())) return dateKey(new Date());
+  const day = date.getDay();
+  date.setDate(date.getDate() - ((day + 6) % 7));
+  return dateKey(date);
+}
+
+function formatWeekRange(weekStart) {
+  if (!weekStart) return '';
+  const start = new Date(`${weekStart}T12:00:00`);
+  if (Number.isNaN(start.getTime())) return '';
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startLabel} – ${endLabel}`;
+}
+
+function getWeekOfMonthLabel(weekStart) {
+  const date = new Date(`${weekStart}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  const weekOfMonth = Math.ceil(date.getDate() / 7);
+  return `${date.toLocaleDateString('en-US', { month: 'long' })} · week ${weekOfMonth}`;
+}
+
+function shiftWeek(weekStart, amount) {
+  const date = new Date(`${weekStart}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return weekStart;
+  date.setDate(date.getDate() + amount * 7);
+  return dateKey(date);
+}
+
 export default function StaffingPage() {
-  return (<>
-<header className={"app-header"}>
-    <div className={"header-left"}>
-      <div className={"brand-logo"}>{"W"}</div>
-      <div className={"venue-picker-header"}>
-        <span className={"venue-title"} id={"active-venue-name"}>{"Loading venue..."}</span>
-        <span className={"venue-sub"}>{"Schedule · Pacific Time"}</span>
-      </div>
+  const { hasPermission } = useAuth();
+
+  // URL parameters initialization
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialWeekParam = urlParams.get('week');
+  const initialEventParam = urlParams.get('eventId');
+  const initialVenueParam = urlParams.get('venueId');
+
+  const [weekStart, setWeekStart] = useState(() => getMondayFor(initialWeekParam));
+  const [selectedDay, setSelectedDay] = useState('');
+  const [weekEvents, setWeekEvents] = useState([]);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [venues, setVenues] = useState([]);
+  const [currentVenue, setCurrentVenue] = useState(null);
+  const [showEventDetails, setShowEventDetails] = useState(false);
+  const [viewMode, setViewMode] = useState('day');
+  const [loading, setLoading] = useState(true);
+
+  // Fetch full details of a specific event
+  const loadEventDetail = useCallback(async (eventId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}`, {
+        credentials: 'include',
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.location.replace('/login/');
+        return null;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (err) {
+      console.error('Error fetching event details:', err);
+      return null;
+    }
+  }, []);
+
+  // Fetch events for the week and extract venues
+  const fetchWeekEvents = useCallback(async (targetWeek, targetEventId = '') => {
+    setLoading(true);
+    try {
+      const query = new URLSearchParams({ week: targetWeek });
+      const response = await fetch(`${API_BASE_URL}/api/events?${query.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        window.location.replace('/login/');
+        return;
+      }
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const events = data.events || [];
+      setWeekEvents(events);
+
+      // Extract unique venues from all events
+      const venueMap = new Map();
+      events.forEach(e => {
+        const vName = e.venue || 'Unknown Venue';
+        const vId = e.venueId || vName;
+        if (!venueMap.has(vId)) {
+          venueMap.set(vId, { id: vId, name: vName, timezone: e.timezone || 'Central Time' });
+        }
+      });
+      const uniqueVenues = Array.from(venueMap.values());
+      setVenues(uniqueVenues);
+
+      // Determine initial venue
+      let chosenVenue = null;
+      if (initialVenueParam && uniqueVenues.length > 0) {
+        chosenVenue = uniqueVenues.find(v => v.id === initialVenueParam) || null;
+      }
+      if (!chosenVenue && targetEventId && events.length > 0) {
+        const targetEvt = events.find(e => e.id === targetEventId);
+        if (targetEvt) {
+          chosenVenue = uniqueVenues.find(v => (v.id && v.id === targetEvt.venueId) || v.name === targetEvt.venue) || null;
+        }
+      }
+      if (!chosenVenue && uniqueVenues.length > 0) {
+        chosenVenue = currentVenue || uniqueVenues[0];
+      }
+      if (chosenVenue) {
+        setCurrentVenue(chosenVenue);
+      }
+
+      // Filter events by chosen venue
+      const venueFiltered = chosenVenue
+        ? events.filter(e => (e.venueId && e.venueId === chosenVenue.id) || e.venue === chosenVenue.name)
+        : events;
+
+      if (venueFiltered.length > 0) {
+        const selected = (targetEventId && venueFiltered.find(e => e.id === targetEventId)) || venueFiltered[0];
+        setSelectedDay(selected.eventDate);
+
+        const details = await loadEventDetail(selected.id);
+        setActiveEvent(details || selected);
+
+        const url = new URL(window.location.href);
+        url.pathname = '/staffing';
+        url.searchParams.set('week', targetWeek);
+        url.searchParams.delete('eventId');
+        if (chosenVenue) url.searchParams.set('venueId', chosenVenue.id);
+        window.history.replaceState({}, '', url);
+      } else {
+        setActiveEvent(null);
+        setSelectedDay(targetWeek);
+      }
+    } catch (err) {
+      console.error('Error loading week events:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadEventDetail, initialVenueParam]);
+
+  useEffect(() => {
+    fetchWeekEvents(weekStart, initialEventParam);
+  }, [weekStart, fetchWeekEvents, initialEventParam]);
+
+  // Venue selection handler: updates current venue, selects its first event, and updates URL
+  const handleVenueChange = (selected) => {
+    setCurrentVenue(selected);
+    const venueEvts = weekEvents.filter(e => (e.venueId && e.venueId === selected.id) || e.venue === selected.name);
+    if (venueEvts.length > 0) {
+      handleSelectEvent(venueEvts[0].id);
+    } else {
+      setActiveEvent(null);
+    }
+    const url = new URL(window.location.href);
+    url.pathname = '/staffing';
+    url.searchParams.set('venueId', selected.id);
+    url.searchParams.delete('eventId');
+    window.history.replaceState({}, '', url);
+  };
+
+  const handlePrevWeek = () => {
+    setWeekStart(prev => shiftWeek(prev, -1));
+  };
+
+  const handleNextWeek = () => {
+    setWeekStart(prev => shiftWeek(prev, 1));
+  };
+
+  const handleThisWeek = () => {
+    setWeekStart(getMondayFor());
+  };
+
+  const handleDateChange = (dateString) => {
+    if (!dateString) return;
+    setWeekStart(getMondayFor(dateString));
+  };
+
+  const handleSelectDay = (dateStr) => {
+    setSelectedDay(dateStr);
+    const dayEvts = venueEvents.filter(e => e.eventDate === dateStr);
+    if (dayEvts.length > 0) {
+      handleSelectEvent(dayEvts[0].id);
+    }
+  };
+
+  const handleSelectEvent = async (eventId) => {
+    const details = await loadEventDetail(eventId);
+    const chosen = details || weekEvents.find(e => e.id === eventId);
+    if (chosen) {
+      setActiveEvent(chosen);
+      setSelectedDay(chosen.eventDate);
+
+      const url = new URL(window.location.href);
+      url.pathname = '/staffing';
+      url.searchParams.delete('eventId');
+      window.history.replaceState({}, '', url);
+    }
+  };
+
+  // Filter events by currently selected venue
+  const venueEvents = currentVenue
+    ? weekEvents.filter(e => (e.venueId && e.venueId === currentVenue.id) || e.venue === currentVenue.name)
+    : weekEvents;
+
+  // Filter events for the selected day within this venue
+  const dayEvents = selectedDay
+    ? venueEvents.filter(e => e.eventDate === selectedDay)
+    : (activeEvent ? [activeEvent] : []);
+
+  return (
+    <div className="staffing-application-container">
+      <AppHeader
+        venues={venues}
+        currentVenue={currentVenue}
+        onVenueChange={handleVenueChange}
+        weekStart={weekStart}
+        weekRangeLabel={formatWeekRange(weekStart)}
+        weekRangeMonth={getWeekOfMonthLabel(weekStart)}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onThisWeek={handleThisWeek}
+        onDateChange={handleDateChange}
+      />
+
+      <StatusBanner
+        publishedCount={venueEvents.length}
+        totalEvents={venueEvents.length}
+        coverageStatus="Coverage still needs review"
+      />
+
+      <LaborGoalsAccordion
+        weekDates={formatWeekRange(weekStart)}
+        monthLabel={`This month · ${new Date(`${weekStart}T12:00:00`).toLocaleDateString('en-US', { month: 'long' })}`}
+        eventId={activeEvent?.id || ''}
+        weekStart={weekStart}
+      />
+
+      <WeekRibbon
+        weekStart={weekStart}
+        events={venueEvents}
+        selectedDay={selectedDay}
+        onSelectDay={handleSelectDay}
+        activeEventId={activeEvent?.id}
+        onSelectEvent={handleSelectEvent}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+
+      {viewMode === 'day' ? (
+        <main className="workspace-main">
+          <DayActionBar
+            selectedDate={selectedDay || weekStart}
+            events={dayEvents.length > 0 ? dayEvents : (activeEvent ? [activeEvent] : [])}
+            activeEvent={activeEvent}
+            onSelectEvent={handleSelectEvent}
+            onToggleEventDetails={() => setShowEventDetails(prev => !prev)}
+            showEventDetails={showEventDetails}
+          />
+
+          <EventDetailsModal
+            event={activeEvent}
+            isOpen={showEventDetails}
+            onClose={() => setShowEventDetails(false)}
+          />
+
+          <TimelineGrid activeEvent={activeEvent} />
+        </main>
+      ) : (
+        <main className="workspace-main">
+          <WeekScheduleGrid weekStart={weekStart} events={venueEvents} />
+        </main>
+      )}
     </div>
-
-    <div className={"week-controls-header"} aria-label={"Planning week controls"}>
-      <button className={"week-header-arrow"} id={"prev-week"} aria-label={"Previous week"}>{"‹"}</button>
-      <label className={"week-range-control"} htmlFor={"week-picker"}>
-        <span className={"week-range-label"} id={"week-range-label"}>{"Selected week"}</span>
-        <span className={"week-range-month"} id={"week-range-month"}></span>
-        <input type={"date"} id={"week-picker"} aria-label={"Choose a date to view its week"} />
-      </label>
-      <button className={"week-header-arrow"} id={"next-week"} aria-label={"Next week"}>{"›"}</button>
-      <button className={"this-week-button"} id={"this-week-button"} type={"button"}>{"This week"}</button>
-    </div>
-
-    
-    <nav className={"flow-nav"}>
-      <a href={"/"} className={"flow-step"}>
-        <span className={"step-num"}>{"1"}</span>
-        <span>{"Events"}</span>
-      </a>
-      <span style={{"color": "#cbd5e1"}}>{"·"}</span>
-      <div className={"flow-step active"}>
-        <span className={"step-num"}>{"2"}</span>
-        <span>{"Staffing plan"}</span>
-      </div>
-      <span style={{"color": "#cbd5e1"}}>{"·"}</span>
-      <div className={"flow-step"}>
-        <span className={"step-num"}>{"3"}</span>
-        <span>{"Review & publish"}</span>
-      </div>
-    </nav>
-
-    
-    <div className={"header-right"}>
-      <span className={"badge-draft"}>{"Draft storage not connected"}</span>
-      <button className={"btn btn-primary"} id={"btn-publish-adp"} disabled title={"ADP publishing is not connected"}>{"Publish to ADP"}</button>
-    </div>
-  </header>
-
-  
-  <section className={"labor-plan-strip"}>
-    <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "8px"}}>
-      <div className={"labor-plan-title"} style={{"marginBottom": "0"}}>{"Labor plan"}</div>
-      <a href={"/goals/"} style={{"fontSize": "12px", "fontWeight": "700", "color": "#166534", "textDecoration": "underline"}} id={"link-goals-budgets"}>{"Goals & budgets"}</a>
-    </div>
-    <div className={"labor-plan-grid"}>
-      <div className={"plan-period"}>
-        <h3>{"This week’s plan"}</h3>
-        <p id={"plan-week-dates"}>{"Selected week"}</p>
-      </div>
-      <div className={"metric-box"}>
-        <div className={"metric-label"}>{"FOH LE"}</div>
-        <div className={"metric-val"}><span>{"—"}</span></div>
-        <div className={"metric-diff"}></div>
-      </div>
-      <div className={"metric-box"}>
-        <div className={"metric-label"}>{"BOH LE"}</div>
-        <div className={"metric-val"}><span>{"—"}</span></div>
-        <div className={"metric-diff"}></div>
-      </div>
-      <div className={"metric-box"}>
-        <div className={"metric-label"}>{"Pub budget"}</div>
-        <div className={"metric-val"}><span>{"—"}</span></div>
-        <div className={"metric-diff"}></div>
-      </div>
-    </div>
-    <div className={"labor-plan-grid monthly-plan-row"}>
-      <div className={"plan-period"}>
-        <h3 id={"plan-month-label"}>{"This month"}</h3>
-        <p>{"Monthly plan"}</p>
-      </div>
-      <div className={"metric-box"}><div className={"metric-label"}>{"FOH LE"}</div><div className={"metric-val"}><span>{"—"}</span></div><div className={"metric-diff"}></div></div>
-      <div className={"metric-box"}><div className={"metric-label"}>{"BOH LE"}</div><div className={"metric-val"}><span>{"—"}</span></div><div className={"metric-diff"}></div></div>
-      <div className={"metric-box"}><div className={"metric-label"}>{"Pub budget"}</div><div className={"metric-val"}><span>{"—"}</span></div><div className={"metric-diff"}></div></div>
-    </div>
-    <div className={"labor-source-state"}>{"Labor goals and budgets are unavailable until their data source is connected."}</div>
-  </section>
-
-  <div className={"staffing-view-bar"} role={"tablist"} aria-label={"Schedule view"}>
-    <button className={"staffing-view-button active"} id={"day-view-button"} type={"button"} role={"tab"} aria-selected={"true"}>{"Day view"}</button>
-    <button className={"staffing-view-button"} id={"week-view-button"} type={"button"} role={"tab"} aria-selected={"false"}>{"Week view"}</button>
-    <button className={"staffing-view-button"} id={"staffing-view-button"} type={"button"} role={"tab"} aria-selected={"false"}>{"Staffing"}</button>
-    <div className={"coverage-summary"}>{"Coverage gaps · "}<span id={"coverage-gap-value"}>{"—"}</span></div>
-  </div>
-
-  
-  <section className={"week-days-strip"} id={"week-ribbon-container"}>
-    
-  </section>
-
-  
-  <main className={"workspace-main"}>
-
-    
-    <div className={"day-action-bar"}>
-      <div className={"day-action-title"}>
-        <h2 id={"current-day-heading"}>{"Loading Event..."}</h2>
-        <p id={"current-day-summary"}>{"Loading event details..."}</p>
-      </div>
-      <div className={"day-controls"}>
-        <select className={"btn btn-outline"} id={"event-selector-dropdown"}>
-          
-        </select>
-        <button className={"btn btn-outline"} id={"btn-toggle-inputs"}>{"Hide planning inputs"}</button>
-        <button className={"btn btn-outline"} id={"btn-beo-pdf"} title={"BEO PDF access is not connected"} disabled>{"BEO PDF"}</button>
-        <button className={"btn btn-outline"} disabled title={"Staff roster is not connected"}>{"Focus roster"}</button>
-      </div>
-    </div>
-
-    
-    <section className={"planning-inputs-card"} id={"planning-inputs-container"}>
-      <div className={"planning-header"}>
-        <span>{"Planning inputs · "}<strong id={"planning-event-title"}>{"Loading..."}</strong></span>
-        <span style={{"color": "#64748b", "fontSize": "11px"}} id={"quote-number-tag"}>{"Salesforce CPQ Quote"}</span>
-      </div>
-
-      <div className={"planning-grid"}>
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Guests"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-guests"}>{"Loading..."}</div>
-          <div className={"cell-sub"} id={"sub-guests"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Ceremony"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-ceremony"}>{"Loading..."}</div>
-          <div className={"cell-sub"} id={"sub-ceremony"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Meal"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-meal"}>{"Loading..."}</div>
-          <div className={"cell-sub"} id={"sub-meal"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Bar"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-bar"}>{"Loading..."}</div>
-          <div className={"cell-sub"} id={"sub-bar"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Reception / event"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-reception"}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Appetizers / action stations"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-appetizers"}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Signature drinks / prep"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-signature-drinks"}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Welcome champagne / wall"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-champagne"}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Table settings"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-table-settings"} style={{"fontSize": "12.5px"}}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"}>
-          <div className={"cell-label"}>
-            <span>{"Photo booth / attendant"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-photobooth"}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"planning-cell"} style={{"gridColumn": "span 2"}}>
-          <div className={"cell-label"}>
-            <span>{"Extras / special instructions"}</span>
-            
-          </div>
-          <div className={"cell-val"} id={"val-extras"} style={{"fontSize": "12.5px"}}>{"Loading..."}</div>
-          <div className={"cell-sub"}></div>
-        </div>
-
-        
-        <div className={"full-width-cell"}>
-          <span style={{"fontWeight": "700", "color": "#475569", "whiteSpace": "nowrap"}}>{"GM working note:"}</span>
-          <input type={"text"} className={"gm-input-field"} id={"gm-note-input"} placeholder={"Notes unavailable until draft storage is connected"} disabled />
-          <span className={"value-unavailable"}>{"Notes storage is not connected"}</span>
-        </div>
-      </div>
-    </section>
-
-    
-    <section className={"roster-card"}>
-      <div className={"roster-toolbar"}>
-        <div style={{"display": "flex", "gap": "10px", "alignItems": "center"}}>
-          <input type={"text"} className={"roster-search"} placeholder={"Find an employee..."} disabled aria-label={"Employee search unavailable"} />
-          <select className={"btn btn-outline"} style={{"padding": "5px 10px"}} disabled aria-label={"Department filter unavailable"}>
-            <option>{"All departments"}</option>
-          </select>
-        </div>
-        <div></div>
-      </div>
-      <div className={"timeline-header-row"}>
-        <div className={"worker-col-header"}>{"Worker / week hours · Role"}</div>
-        <div className={"hours-axis"}><span>{"6 AM"}</span><span>{"10 AM"}</span><span>{"2 PM"}</span><span>{"6 PM"}</span><span>{"10 PM"}</span><span>{"2 AM +1"}</span><span>{"Status"}</span></div>
-      </div>
-      <div className={"event-span-row"}>
-        <div style={{"paddingLeft": "16px", "color": "#065f46", "fontWeight": "800", "whiteSpace": "nowrap", "overflow": "hidden", "textOverflow": "ellipsis"}} id={"timeline-event-name"}>{"Selected event"}</div>
-        <div style={{"position": "relative", "height": "26px"}}><div className={"event-span-bar"} id={"timeline-event-bar"}></div></div>
-      </div>
-      <div className={"adp-unavailable-state"} id={"adp-unavailable-state"}>{"\n        ADP is not connected. Employee availability, planned shifts, and coverage are not available yet.\n      "}</div>
-      <div className={"timeline-departments"}>
-        <div className={"dept-header-row"}><span>{"Open shifts"}</span><span></span></div>
-        <div className={"worker-row"} aria-hidden={"true"}><div className={"worker-info"}></div><div className={"timeline-canvas"}></div></div>
-        <div className={"dept-header-row"}><span>{"FOH"}</span><span>{"Front of house"}</span></div>
-        <div className={"worker-row"} aria-hidden={"true"}><div className={"worker-info"}></div><div className={"timeline-canvas"}></div></div>
-        <div className={"dept-header-row"}><span>{"BOH"}</span><span>{"Back of house"}</span></div>
-        <div className={"worker-row"} aria-hidden={"true"}><div className={"worker-info"}></div><div className={"timeline-canvas"}></div></div>
-        <div className={"dept-header-row"}><span>{"PUB"}</span><span>{"Bar"}</span></div>
-        <div className={"worker-row"} aria-hidden={"true"}><div className={"worker-info"}></div><div className={"timeline-canvas"}></div></div>
-        <div className={"dept-header-row"}><span>{"Bev Cart"}</span><span></span></div>
-        <div className={"worker-row"} aria-hidden={"true"}><div className={"worker-info"}></div><div className={"timeline-canvas"}></div></div>
-        <div className={"dept-header-row"}><span>{"Snack Bar"}</span><span></span></div>
-        <div className={"worker-row"} aria-hidden={"true"}><div className={"worker-info"}></div><div className={"timeline-canvas"}></div></div>
-      </div>
-    </section>
-
-  </main>
-  </>);
+  );
 }

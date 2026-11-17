@@ -12,14 +12,14 @@ export default function GoalsPage() {
         <span className={"venue-title"} id={"goals-venue-name"}>{"Wedgewood Weddings"}</span>
         <span className={"venue-sub"}>{"Schedule · Pacific Time"}</span>
       </div>
-      <a href="/staffing/" onClick={event => { event.preventDefault(); history.back(); }} className={"back-link"} style={{"marginLeft": "20px"}}>{"‹ Back to schedule"}</a>
+      <a href="/staffing" onClick={event => { event.preventDefault(); history.back(); }} className={"back-link"} style={{"marginLeft": "20px"}}>{"‹ Back to schedule"}</a>
     </div>
     <div style={{"fontSize": "12px", "color": "#64748b"}}>{"\n      Draft saved\n    "}</div>
   </header>
 
   
   <nav className={"sub-nav-bar"}>
-    <a href={"/staffing/"} className={"sub-nav-tab"}>{"Schedule"}</a>
+    <a href={"/staffing"} className={"sub-nav-tab"}>{"Schedule"}</a>
     <div className={"sub-nav-tab active"}>{"Goals & budgets"}</div>
     <div className={"sub-nav-tab"} style={{"color": "#94a3b8"}}>{"Help, history & sync"}</div>
     <div className={"sub-nav-tab"} style={{"color": "#94a3b8"}}>{"Prototype controls"}</div>
@@ -29,7 +29,7 @@ export default function GoalsPage() {
   <main className={"goals-container"}>
     <div className={"goals-header-row"}>
       <h1 className={"goals-title"}>{"Goals & budgets"}</h1>
-      <a href="/staffing/" onClick={event => { event.preventDefault(); history.back(); }} className={"back-link"}>{"‹ Back to schedule"}</a>
+      <a href="/staffing" onClick={event => { event.preventDefault(); history.back(); }} className={"back-link"}>{"‹ Back to schedule"}</a>
     </div>
 
     <div className={"section-subtitle"}>{"2026 monthly results & targets"}</div>

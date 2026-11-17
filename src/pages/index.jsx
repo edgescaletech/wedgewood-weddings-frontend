@@ -162,7 +162,7 @@ export default function IndexPage() {
         <span className="welcome-footer-note">
           Early designs · Built with feedback from Wedgewood GMs
         </span>
-        <a href="/staffing/" className="btn-start-scheduling">
+        <a href="/staffing" className="btn-start-scheduling">
           Start scheduling →
         </a>
       </footer>
