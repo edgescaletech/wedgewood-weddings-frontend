@@ -1,14 +1,13 @@
-import { API_BASE_URL as apiBase } from "./config.js";
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import Events, { styles as eventStyles } from './pages/index.jsx';
+import { API_BASE_URL as apiBase } from "./config.js";
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Staffing, { styles as staffingStyles } from './pages/staffing.jsx';
 import Goals, { styles as goalsStyles } from './pages/goals.jsx';
 import Login from './pages/login.jsx';
 import '../style.css';
 
 const pages = {
-  events: [Events, eventStyles],
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
   login: [Login, ""],
@@ -16,25 +15,25 @@ const pages = {
 
 function getPage() {
   const path = window.location.pathname;
-  if (['/login', '/login/', '/login/index.html', '/reset-password', '/reset-password/', '/reset-password/index.html'].includes(path)) return 'login';
-  for (const page of ['staffing', 'goals']) {
-    if ([`/${page}`, `/${page}/`, `/${page}.html`].includes(path)) {
-      if (path !== `/${page}/`) {
-        history.replaceState(history.state, '', `/${page}/${location.search}${location.hash}`);
-      }
-      return page;
-    }
+  if (['/login', '/login/', '/login/index.html', '/reset-password', '/reset-password/', '/reset-password/index.html'].includes(path)) {
+    return 'login';
   }
-  // Default route: go directly to staffing plan
-  history.replaceState(history.state, '', `/staffing/${location.search}${location.hash}`);
+  if (['/goals', '/goals/', '/goals.html'].includes(path)) {
+    if (path !== '/goals') {
+      history.replaceState(history.state, '', `/goals${location.search}${location.hash}`);
+    }
+    return 'goals';
+  }
+  // Default route: go directly to staffing schedule matching client prototype
+  if (path !== '/staffing') {
+    history.replaceState(history.state, '', `/staffing${location.search}${location.hash}`);
+  }
   return 'staffing';
 }
 
 const page = getPage();
 
-
-
-// Check the server session before rendering or starting application controllers.
+// Check the server session before rendering application components.
 function ProtectedPage() {
   const [status, setStatus] = useState('checking');
   const [attempt, setAttempt] = useState(0);
@@ -65,34 +64,38 @@ function ProtectedPage() {
 
   if (status === 'authenticated') return <Page />;
   if (status === 'unavailable') {
-    return <main role="alert">Unable to check your session. <button onClick={() => { setStatus('checking'); setAttempt(attempt + 1); }}>Try again</button></main>;
+    return (
+      <main role="alert" style={{ padding: '24px', textAlign: 'center' }}>
+        Unable to check your session.{' '}
+        <button onClick={() => { setStatus('checking'); setAttempt(attempt + 1); }}>
+          Try again
+        </button>
+      </main>
+    );
   }
-  return <main role="status">Checking your session…</main>;
+  return <main role="status" style={{ padding: '24px', textAlign: 'center' }}>Checking your session…</main>;
 }
 
 function Page() {
-  const [Content, css] = pages[page];
+  const [Content, css] = pages[page] || pages['staffing'];
 
   useEffect(() => {
-    const styleNodes = (css ? [css] : []).map(css => {
+    const styleNodes = (css ? [css] : []).map(cssText => {
       const node = document.createElement('style');
       node.dataset.reactPageStyle = page;
-      node.textContent = css;
+      node.textContent = cssText;
       document.head.appendChild(node);
       return node;
     });
 
     let cancelled = false;
-    if (page === 'login') return () => styleNodes.forEach(node => node.remove());
+    if (page === 'login' || page === 'staffing') {
+      return () => styleNodes.forEach(node => node.remove());
+    }
 
     const startController = async () => {
       try {
-        if (page === 'events') {
-          // Welcome overview screen — no legacy controller needed
-        } else if (page === 'staffing') {
-          const controller = await import('./legacy/staffing.js');
-          if (!cancelled) controller.mount();
-        } else if (page === 'goals') {
+        if (page === 'goals') {
           const controller = await import('./legacy/goals.js');
           if (!cancelled) controller.mount();
         }
@@ -101,13 +104,22 @@ function Page() {
       }
     };
     startController();
+
     return () => {
       cancelled = true;
       styleNodes.forEach(node => node.remove());
     };
   }, [page, css]);
 
-  return <div className={`react-page react-page-${page}`} ><Content /></div>;
+  return (
+    <div className={`react-page react-page-${page}`}>
+      <Content />
+    </div>
+  );
 }
 
-createRoot(document.getElementById('root')).render(page === 'login' ? <Page /> : <ProtectedPage />);
+createRoot(document.getElementById('root')).render(
+  <AuthProvider>
+    {page === 'login' ? <Page /> : <ProtectedPage />}
+  </AuthProvider>
+);
