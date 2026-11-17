@@ -39,10 +39,7 @@ export function AuthProvider({ children }) {
         });
 
         if (response.status === 401 || response.status === 403) {
-          const path = window.location.pathname;
-          if (!path.startsWith('/login') && !path.startsWith('/reset-password') && !path.startsWith('/signup')) {
-            window.location.replace('/login');
-          }
+          setUser(null);
           return;
         }
 
