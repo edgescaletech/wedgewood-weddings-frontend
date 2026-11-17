@@ -75,7 +75,7 @@ export default function StaffingPage() {
         credentials: 'include',
       });
       if (response.status === 401 || response.status === 403) {
-        window.location.replace('/login/');
+        window.location.replace('/login');
         return null;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -96,7 +96,7 @@ export default function StaffingPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        window.location.replace('/login/');
+        window.location.replace('/login');
         return;
       }
 
