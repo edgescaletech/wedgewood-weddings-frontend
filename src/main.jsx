@@ -49,7 +49,7 @@ function ProtectedPage() {
           signal: controller.signal,
         });
         if (response.status === 401 || response.status === 403) {
-          window.location.replace('/login/');
+          window.location.replace('/login');
           return;
         }
         setStatus(response.ok ? 'authenticated' : 'unavailable');
