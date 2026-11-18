@@ -25,10 +25,10 @@ Restart Vite after changing `.env`. For deployment, set the value in the build e
 
 3. Configure the backend `.env` with `APP_URL=http://localhost:3000`, then open `http://localhost:3000/login/`. The login form submits credentials to the backend, which authenticates them with WorkOS and sets a session cookie. The frontend sends that cookie with event requests. The custom flow supports email verification and password reset. MFA and SSO challenges are not yet supported. New accounts are currently active by default; existing inactive accounts still require activation.
 
-For temporary signup, open `http://localhost:3000/signup/`, create an account, then sign in and complete email verification if prompted. The local account is created on the first successful sign-in. To remove signup, delete the `signup/` directory and its entry in `vite.config.js`, and disable the backend `/auth/signup` route as described in the backend README.
+An Admin sends your WorkOS invitation. Follow the email link to set your password, then wait for your Admin to activate your local account. Use the login page for subsequent sign-ins.
 
 
-The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login, signup, and password recovery remain public.
+The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login and password recovery remain public.
 
 ## Build
 

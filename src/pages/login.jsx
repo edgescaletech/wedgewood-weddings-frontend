@@ -481,9 +481,6 @@ export default function Login() {
                 >
                   Forgot password?
                 </button>
-                <p className="login-help">
-                  Don’t have an account? <a href="/signup/">Create one</a>
-                </p>
                 {status === "logout-error" && (
                   <button className="login-secondary" onClick={signOut}>
                     Try signing out again
