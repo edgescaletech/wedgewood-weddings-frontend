@@ -1,47 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// GM default permissions as defined in the client specification matrix
-const GM_PERMISSIONS = {
-  view_schedule: true,
-  compare_labor_goals: true,
-  edit_schedule: true,
-  review_approval: true,
-  publish_adp: true,
-  send_adp_changes: true,
-  manage_users: false, // Admin only
-  update_labor_goals: false, // Admin only
-};
-
-// Scheduler permissions as defined in the client specification matrix
-const SCHEDULER_PERMISSIONS = {
-  view_schedule: true,
-  compare_labor_goals: true,
-  edit_schedule: true,
-  review_approval: false,
-  publish_adp: false,
-  send_adp_changes: false,
-  manage_users: false,
-  update_labor_goals: false,
-};
-
-function resolveUserRoleAndPermissions(userData) {
-  if (userData && userData.role && userData.role.trim() !== '') {
-    const permMap = {};
-    if (Array.isArray(userData.permissions)) {
-      userData.permissions.forEach(p => { permMap[p] = true; });
-    }
-    return {
-      role: userData.role,
-      permissions: permMap,
-    };
-  }
-  // Fallback to General manager (GM)
-  return {
-    role: 'General manager (GM)',
-    permissions: GM_PERMISSIONS,
-  };
-}
+import { resolveIdentityPermissions } from '../src/context/identity-permissions.js';
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -66,26 +26,23 @@ function formatWeekRange(weekStart) {
   return `${startLabel} – ${endLabel}`;
 }
 
-test('Auth Role Fallback - defaults to General manager (GM)', () => {
-  const resolved = resolveUserRoleAndPermissions(null);
-  assert.equal(resolved.role, 'General manager (GM)');
-  assert.equal(resolved.permissions.view_schedule, true);
-  assert.equal(resolved.permissions.publish_adp, true);
-  assert.equal(resolved.permissions.compare_labor_goals, true);
-  assert.equal(resolved.permissions.edit_schedule, true);
-  assert.equal(resolved.permissions.review_approval, true);
-  assert.equal(resolved.permissions.manage_users, false);
-  assert.equal(resolved.permissions.update_labor_goals, false);
+test('Auth permissions are empty when the server supplies no role', () => {
+  for (const identity of [null, { id: '123' }, { role: '', permissions: ['publish_adp'] }]) {
+    const resolved = resolveIdentityPermissions(identity);
+    assert.equal(resolved.role, '');
+    assert.deepEqual(Object.keys(resolved.permissions), []);
+    assert.equal(resolved.permissions.publish_adp, undefined);
+  }
 });
 
-test('Auth Role Fallback - respects user with empty role string', () => {
-  const resolved = resolveUserRoleAndPermissions({ id: '123', email: 'gm@wedgewood.com', role: '' });
-  assert.equal(resolved.role, 'General manager (GM)');
-  assert.equal(resolved.permissions.publish_adp, true);
+test('A role alone does not grant permissions', () => {
+  const resolved = resolveIdentityPermissions({ role: 'General Manager' });
+  assert.deepEqual(Object.keys(resolved.permissions), []);
+  assert.equal(resolved.permissions.toString, undefined);
 });
 
 test('Auth Role Matrix - custom server-provided Scheduler permissions', () => {
-  const resolved = resolveUserRoleAndPermissions({
+  const resolved = resolveIdentityPermissions({
     id: '456',
     role: 'Venue scheduler',
     permissions: ['view_schedule', 'compare_labor_goals', 'edit_schedule'],

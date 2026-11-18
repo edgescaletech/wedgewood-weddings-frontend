@@ -28,7 +28,7 @@ Restart Vite after changing `.env`. For deployment, set the value in the build e
 An Admin sends your WorkOS invitation. Follow the email link to set your password, then wait for your Admin to activate your local account. Use the login page for subsequent sign-ins.
 
 
-The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login and password recovery remain public.
+The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login and password recovery remain public. The UI enables permission-controlled actions only when the identity response supplies a role and the relevant permission.
 
 ## Build
 
