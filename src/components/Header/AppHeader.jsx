@@ -12,6 +12,8 @@ export default function AppHeader({
   onNextWeek,
   onThisWeek,
   onDateChange,
+  isBeoView = false,
+  onBackToSchedule,
 }) {
   const { hasPermission } = useAuth();
   const canPublishADP = hasPermission('publish_adp');
@@ -60,66 +62,81 @@ export default function AppHeader({
             {currentVenue?.timezone ? `Schedule · ${currentVenue.timezone.replace('_', ' ')}` : 'Schedule · Central Time'}
           </span>
         </div>
+        {isBeoView && (
+          <button
+            type="button"
+            className="btn-header-back-schedule"
+            onClick={onBackToSchedule}
+          >
+            ‹ Back to schedule
+          </button>
+        )}
       </div>
 
-      <div className="week-controls-header" aria-label="Planning week controls">
-        <button
-          className="week-header-arrow"
-          id="prev-week"
-          onClick={onPrevWeek}
-          aria-label="Previous week"
-          type="button"
-        >
-          ‹
-        </button>
-        <label className="week-range-control" htmlFor="week-picker">
-          <span className="week-range-label" id="week-range-label">
-            {weekRangeLabel || 'Selected week'}
-          </span>
-          <span className="week-range-month" id="week-range-month">
-            {weekRangeMonth}
-          </span>
-          <input
-            type="date"
-            id="week-picker"
-            value={weekStart || ''}
-            onChange={(e) => onDateChange && onDateChange(e.target.value)}
-            aria-label="Choose a date to view its week"
-          />
-        </label>
-        <button
-          className="week-header-arrow"
-          id="next-week"
-          onClick={onNextWeek}
-          aria-label="Next week"
-          type="button"
-        >
-          ›
-        </button>
-        <button
-          className="this-week-button"
-          id="this-week-button"
-          onClick={onThisWeek}
-          type="button"
-        >
-          This week
-        </button>
-      </div>
+      {!isBeoView ? (
+        <div className="week-controls-header" aria-label="Planning week controls">
+          <button
+            className="week-header-arrow"
+            id="prev-week"
+            onClick={onPrevWeek}
+            aria-label="Previous week"
+            type="button"
+          >
+            ‹
+          </button>
+          <label className="week-range-control" htmlFor="week-picker">
+            <span className="week-range-label" id="week-range-label">
+              {weekRangeLabel || 'Selected week'}
+            </span>
+            <span className="week-range-month" id="week-range-month">
+              {weekRangeMonth}
+            </span>
+            <input
+              type="date"
+              id="week-picker"
+              value={weekStart || ''}
+              onChange={(e) => onDateChange && onDateChange(e.target.value)}
+              aria-label="Choose a date to view its week"
+            />
+          </label>
+          <button
+            className="week-header-arrow"
+            id="next-week"
+            onClick={onNextWeek}
+            aria-label="Next week"
+            type="button"
+          >
+            ›
+          </button>
+          <button
+            className="this-week-button"
+            id="this-week-button"
+            onClick={onThisWeek}
+            type="button"
+          >
+            This week
+          </button>
+        </div>
+      ) : (
+        <div className="header-center-spacer" />
+      )}
 
       <div className="header-right">
         <div className="simulation-tag">
           <span className="draft-saved-text" style={{ color: '#dc2626' }}>Draft saved</span>
-          <span className="simulation-sub" style={{ color: '#dc2626' }}>All shift changes sent (simulation)</span>
+          <span className="simulation-sub" style={{ color: '#dc2626' }}>{isBeoView ? 'Draft - not sent to ADP' : 'All shift changes sent (simulation)'}</span>
         </div>
-        <button
-          className={`btn-adp-synced ${canPublishADP ? 'active' : 'disabled'}`}
-          id="btn-publish-adp"
-          type="button"
-          disabled={!canPublishADP}
-          title={canPublishADP ? 'Schedule synced to ADP' : 'Permission required to publish to ADP'}
-        >
-          <span className="check-icon" aria-hidden="true">✓</span> Schedule synced to ADP
-        </button>
+        {!isBeoView && (
+          <button
+            className={`btn-adp-synced ${canPublishADP ? 'active' : 'disabled'}`}
+            id="btn-publish-adp"
+            type="button"
+            disabled={!canPublishADP}
+            title={canPublishADP ? 'Schedule synced to ADP' : 'Permission required to publish to ADP'}
+          >
+            <span className="check-icon" aria-hidden="true">✓</span> Schedule synced to ADP
+          </button>
+        )}
         <div className="more-menu-container" ref={moreMenuRef}>
           <button
             className={`btn-more-options ${showMoreMenu ? 'active' : ''}`}
@@ -133,7 +150,7 @@ export default function AppHeader({
           {showMoreMenu && (
             <div className="more-dropdown-menu" role="menu">
               <a
-                href="/goals"
+                href={currentVenue?.id ? `/goals?venueId=${encodeURIComponent(currentVenue.id)}` : '/goals'}
                 className="more-menu-item"
                 role="menuitem"
                 onClick={() => setShowMoreMenu(false)}

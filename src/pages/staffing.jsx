@@ -7,6 +7,7 @@ import LaborGoalsAccordion from '../components/Schedule/LaborGoalsAccordion.jsx'
 import WeekRibbon from '../components/Schedule/WeekRibbon.jsx';
 import DayActionBar from '../components/Schedule/DayActionBar.jsx';
 import EventDetailsModal from '../components/Schedule/EventDetailsModal.jsx';
+import BeoPdfModal from '../components/Schedule/BeoPdfModal.jsx';
 import TimelineGrid from '../components/Schedule/TimelineGrid.jsx';
 import WeekScheduleGrid from '../components/Schedule/WeekScheduleGrid.jsx';
 import styles from './staffing.css?inline';
@@ -65,8 +66,30 @@ export default function StaffingPage() {
   const [venues, setVenues] = useState([]);
   const [currentVenue, setCurrentVenue] = useState(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
+  const [isBeoView, setIsBeoView] = useState(() => window.location.hash === '#beo');
   const [viewMode, setViewMode] = useState('day');
   const [loading, setLoading] = useState(true);
+
+  // Sync hash changes (e.g. browser back/forward)
+  useEffect(() => {
+    function handleHashChange() {
+      setIsBeoView(window.location.hash === '#beo');
+    }
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleOpenBeoView = useCallback(() => {
+    window.location.hash = 'beo';
+    setIsBeoView(true);
+  }, []);
+
+  const handleBackToSchedule = useCallback(() => {
+    if (window.location.hash === '#beo') {
+      history.pushState(null, '', window.location.pathname + window.location.search);
+    }
+    setIsBeoView(false);
+  }, []);
 
   // Fetch full details of a specific event
   const loadEventDetail = useCallback(async (eventId) => {
@@ -246,55 +269,102 @@ export default function StaffingPage() {
         onNextWeek={handleNextWeek}
         onThisWeek={handleThisWeek}
         onDateChange={handleDateChange}
+        isBeoView={isBeoView}
+        onBackToSchedule={handleBackToSchedule}
       />
 
-      <StatusBanner
-        publishedCount={venueEvents.length}
-        totalEvents={venueEvents.length}
-        coverageStatus="Coverage still needs review"
-      />
+      <nav className="sub-nav-bar">
+        <button
+          type="button"
+          className="sub-nav-tab active"
+          onClick={handleBackToSchedule}
+        >
+          Schedule
+        </button>
+        <a href={currentVenue?.id ? `/goals?venueId=${encodeURIComponent(currentVenue.id)}` : '/goals'} className="sub-nav-tab">
+          Goals & budgets
+        </a>
+        <a href="/admin-goals" className="sub-nav-tab" style={{ color: '#166534', fontWeight: 600 }}>
+          Admin: Labor targets
+        </a>
+        <button
+          type="button"
+          className="sub-nav-tab"
+          style={{ color: '#94a3b8' }}
+          onClick={() => alert("Help, history & sync (simulated prototype documentation)")}
+        >
+          Help, history & sync
+        </button>
+        <button
+          type="button"
+          className="sub-nav-tab"
+          style={{ color: '#94a3b8' }}
+          onClick={() => alert("Prototype controls (simulated demo options)")}
+        >
+          Prototype controls
+        </button>
+      </nav>
 
-      <LaborGoalsAccordion
-        weekDates={formatWeekRange(weekStart)}
-        monthLabel={`This month · ${new Date(`${weekStart}T12:00:00`).toLocaleDateString('en-US', { month: 'long' })}`}
-        eventId={activeEvent?.id || ''}
-        weekStart={weekStart}
-      />
-
-      <WeekRibbon
-        weekStart={weekStart}
-        events={venueEvents}
-        selectedDay={selectedDay}
-        onSelectDay={handleSelectDay}
-        activeEventId={activeEvent?.id}
-        onSelectEvent={handleSelectEvent}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      {viewMode === 'day' ? (
-        <main className="workspace-main">
-          <DayActionBar
-            selectedDate={selectedDay || weekStart}
-            events={dayEvents.length > 0 ? dayEvents : (activeEvent ? [activeEvent] : [])}
-            activeEvent={activeEvent}
-            onSelectEvent={handleSelectEvent}
-            onToggleEventDetails={() => setShowEventDetails(prev => !prev)}
-            showEventDetails={showEventDetails}
-          />
-
-          <EventDetailsModal
-            event={activeEvent}
-            isOpen={showEventDetails}
-            onClose={() => setShowEventDetails(false)}
-          />
-
-          <TimelineGrid activeEvent={activeEvent} />
-        </main>
+      {isBeoView ? (
+        <BeoPdfModal
+          event={activeEvent}
+          currentVenue={currentVenue}
+          isOpen={true}
+          onClose={handleBackToSchedule}
+        />
       ) : (
-        <main className="workspace-main">
-          <WeekScheduleGrid weekStart={weekStart} events={venueEvents} />
-        </main>
+        <>
+          <StatusBanner
+            publishedCount={venueEvents.length}
+            totalEvents={venueEvents.length}
+            coverageStatus="Coverage still needs review"
+          />
+
+          <LaborGoalsAccordion
+            venueId={currentVenue?.id || ''}
+            weekDates={formatWeekRange(weekStart)}
+            monthLabel={`This month · ${new Date(`${weekStart}T12:00:00`).toLocaleDateString('en-US', { month: 'long' })}`}
+            eventId={activeEvent?.id || ''}
+            weekStart={weekStart}
+          />
+
+          <WeekRibbon
+            weekStart={weekStart}
+            events={venueEvents}
+            selectedDay={selectedDay}
+            onSelectDay={handleSelectDay}
+            activeEventId={activeEvent?.id}
+            onSelectEvent={handleSelectEvent}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
+
+          {viewMode === 'day' ? (
+            <main className="workspace-main">
+              <DayActionBar
+                selectedDate={selectedDay || weekStart}
+                events={dayEvents.length > 0 ? dayEvents : (activeEvent ? [activeEvent] : [])}
+                activeEvent={activeEvent}
+                onSelectEvent={handleSelectEvent}
+                onToggleEventDetails={() => setShowEventDetails(prev => !prev)}
+                showEventDetails={showEventDetails}
+                onOpenBeoPdf={handleOpenBeoView}
+              />
+
+              <EventDetailsModal
+                event={activeEvent}
+                isOpen={showEventDetails}
+                onClose={() => setShowEventDetails(false)}
+              />
+
+              <TimelineGrid activeEvent={activeEvent} />
+            </main>
+          ) : (
+            <main className="workspace-main">
+              <WeekScheduleGrid weekStart={weekStart} events={venueEvents} />
+            </main>
+          )}
+        </>
       )}
     </div>
   );

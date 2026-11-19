@@ -4,12 +4,14 @@ import { API_BASE_URL as apiBase } from "./config.js";
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Staffing, { styles as staffingStyles } from './pages/staffing.jsx';
 import Goals, { styles as goalsStyles } from './pages/goals.jsx';
+import AdminGoals, { styles as adminGoalsStyles } from './pages/admin-goals.jsx';
 import Login from './pages/login.jsx';
 import '../style.css';
 
 const pages = {
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
+  adminGoals: [AdminGoals, adminGoalsStyles],
   login: [Login, ""],
 };
 
@@ -17,6 +19,9 @@ function getPage() {
   const path = window.location.pathname;
   if (['/login', '/login/', '/login/index.html', '/reset-password', '/reset-password/', '/reset-password/index.html'].includes(path)) {
     return 'login';
+  }
+  if (['/admin-goals', '/admin-goals/', '/admin-goals.html', '/admin/goals', '/admin/goals/'].includes(path) || window.location.hash === '#admin-goals') {
+    return 'adminGoals';
   }
   if (['/goals', '/goals/', '/goals.html'].includes(path)) {
     if (path !== '/goals') {
@@ -89,7 +94,7 @@ function Page() {
     });
 
     let cancelled = false;
-    if (page === 'login' || page === 'staffing') {
+    if (page === 'login' || page === 'staffing' || page === 'adminGoals') {
       return () => styleNodes.forEach(node => node.remove());
     }
 

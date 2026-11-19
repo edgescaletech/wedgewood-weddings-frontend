@@ -1,0 +1,607 @@
+/* Wedgewood Admin - Labor Efficiency Targets Styles */
+
+.admin-goals-body {
+  background-color: #f4f6f3;
+  color: #1a2e1a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* App Header */
+.admin-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-brand-logo {
+  width: 30px;
+  height: 30px;
+  background: #1b4332;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.brand-text-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title-main {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.1;
+}
+
+.brand-sub-scheduling {
+  font-size: 10.5px;
+  color: #6b7280;
+}
+
+.admin-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.admin-nav-item {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  text-decoration: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-nav-item:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.admin-nav-item.active {
+  background: #d8f3dc;
+  color: #1b4332;
+  font-weight: 700;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-profile-block {
+  text-align: right;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.user-role-label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* Demo controls banner */
+.demo-controls-bar {
+  background: #edf3ee;
+  border-bottom: 1px solid #e1ebe2;
+  padding: 6px 24px;
+  font-size: 12px;
+  color: #2d5a3c;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.demo-pill {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+/* Main Container */
+.admin-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Page Header Row */
+.admin-page-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.admin-page-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1b4332;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
+}
+
+.admin-page-subtitle {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0;
+}
+
+.btn-upload-targets-toggle {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #1f2937;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.15s ease;
+}
+
+.btn-upload-targets-toggle:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* Upload Targets Card */
+.upload-targets-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.upload-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.upload-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.btn-card-close {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-card-close:hover {
+  background: #f3f4f6;
+}
+
+.upload-overwrite-banner {
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  border-left: 4px solid #ea580c;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+}
+
+.banner-lead {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9a3412;
+  margin-bottom: 4px;
+}
+
+.banner-sub {
+  font-size: 12px;
+  color: #7c2d12;
+  line-height: 1.4;
+}
+
+.upload-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.btn-upload-file-label {
+  display: inline-flex;
+  align-items: center;
+  background: #1b4332;
+  color: #ffffff;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.btn-upload-file-label:hover {
+  background: #2d5a3c;
+}
+
+.btn-sec-action {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-sec-action:hover {
+  background: #f9fafb;
+}
+
+.upload-accordions {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drawer-accordion-btn {
+  background: none;
+  border: none;
+  color: #2d5a3c;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.drawer-accordion-btn:hover {
+  text-decoration: underline;
+}
+
+.paste-csv-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+  font-size: 11.5px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px;
+  margin-top: 6px;
+  background: #fafafa;
+}
+
+/* Time Range Tabs */
+.time-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.time-tab-pill {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.time-tab-pill.active {
+  background: #1b4332;
+  border-color: #1b4332;
+  color: #ffffff;
+}
+
+/* Filter Controls Row */
+.filters-bar-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.filter-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+.filter-select, .filter-input-date {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+  min-width: 150px;
+}
+
+/* Region Section */
+.region-section-header {
+  margin-bottom: 16px;
+}
+
+.region-heading {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.region-meta-sub {
+  font-size: 12.5px;
+  color: #4b5563;
+  margin: 0 0 4px 0;
+}
+
+.region-illustrative-note {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0 0 10px 0;
+}
+
+.region-legend {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 12px;
+  color: #374151;
+  margin-bottom: 14px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot-above {
+  color: #15803d;
+  font-size: 14px;
+}
+
+.legend-dot-below {
+  color: #ea580c;
+  font-size: 11px;
+}
+
+.legend-line-target {
+  color: #6b7280;
+  font-weight: bold;
+}
+
+/* Venue Cards Grid */
+.venue-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.venue-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.venue-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 8px;
+}
+
+.venue-name-heading {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.venue-region-tag {
+  font-size: 11.5px;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Two Columns inside Card: FOH & BOH */
+.venue-departments-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.dept-column {
+  border-right: 1px solid #f3f4f6;
+  padding-right: 20px;
+}
+
+.dept-column:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.dept-header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dept-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dept-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.metric-main-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.metric-period-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.metric-target-reference {
+  font-size: 12px;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.status-badge-diff {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.status-badge-diff.above {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-diff.below {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.sparkline-container {
+  margin-top: 10px;
+}
+
+.sparkline-title {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+/* Period details expander */
+.period-details-expander {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 8px;
+}
+
+.expander-btn {
+  background: none;
+  border: none;
+  color: #1b4332;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+}
+
+.expander-btn:hover {
+  text-decoration: underline;
+}
+
+.period-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.period-details-table th, .period-details-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.period-details-table th {
+  font-weight: 600;
+  color: #4b5563;
+  background: #f9fafb;
+}
