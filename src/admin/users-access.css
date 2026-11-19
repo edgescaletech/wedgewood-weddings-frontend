@@ -384,6 +384,26 @@
   color: #fff;
   font-size: 14px;
 }
+.users-access .ux-audit {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #d5ded5;
+}
+.users-access .ux-audit summary {
+  color: #16523e;
+  cursor: pointer;
+  font-weight: 600;
+}
+.users-access .ux-audit-entry {
+  padding: 14px 0;
+  border-bottom: 1px solid #d5ded5;
+}
+.users-access .ux-audit-entry p {
+  margin: 0 0 5px;
+}
+.users-access .ux-audit-entry small {
+  color: var(--admin-muted);
+}
 .users-access .ux-sr-only {
   position: absolute;
   width: 1px;

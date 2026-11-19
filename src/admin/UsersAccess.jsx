@@ -21,6 +21,42 @@ import "./users-access.css";
 
 const api = createAdminApi(API_BASE_URL);
 const pageSize = 25;
+const auditPageSize = 50;
+
+const auditActionLabels = {
+  "user.activate": "User activated",
+  "user.archive": "User archived",
+  "user.deactivate": "User deactivated",
+  "user.invite": "Invitation sent",
+  "user.invitation.accept": "Invitation accepted",
+  "user.update": "User updated",
+  "role.assign": "Role assigned",
+  "role.remove": "Role removed",
+  "role.permissions.update": "Role permissions updated",
+};
+
+function auditActionLabel(action) {
+  return (
+    auditActionLabels[action] ??
+    action.replaceAll(".", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
+
+function auditDetails(entry) {
+  const changedFields = entry.metadata?.fields;
+  if (Array.isArray(changedFields) && changedFields.length > 0) {
+    return `Changed ${changedFields.join(", ")}.`;
+  }
+  if (entry.resourceExternalId) {
+    return `${entry.resourceType || "Resource"}: ${entry.resourceExternalId}`;
+  }
+  return "";
+}
+
+function auditTimestamp(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
+}
 
 export default function UsersAccess() {
   const { user, access, accessError, loading } = useAuth();
@@ -45,6 +81,10 @@ export default function UsersAccess() {
   const [editor, setEditor] = useState(null);
   const [notice, setNotice] = useState("");
   const [toast, setToast] = useState("");
+  const [auditPage, setAuditPage] = useState({ items: [], total: 0 });
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState("");
+  const [auditRevision, setAuditRevision] = useState(0);
   const [invitationKeys] = useState(() => new Map());
 
   useEffect(() => {
@@ -60,6 +100,27 @@ export default function UsersAccess() {
   useEffect(() => {
     if (canBrowseVenues) loadVenuePage(1).catch(() => {});
   }, [canBrowseVenues, loadVenuePage]);
+
+  useEffect(() => {
+    if (!canManage) return undefined;
+
+    const controller = new AbortController();
+    setAuditLoading(true);
+    setAuditError("");
+    api
+      .request(`/api/admin/audit?limit=${auditPageSize}&offset=0`, {
+        signal: controller.signal,
+      })
+      .then((pageData) => setAuditPage(pageData))
+      .catch((error) => {
+        if (!controller.signal.aborted) setAuditError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAuditLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [canManage, auditRevision]);
 
   useEffect(() => {
     if (!canView || !user?.id) return;
@@ -155,6 +216,26 @@ export default function UsersAccess() {
     if (message && showToast) setToast(message);
     else if (message) setNotice(message);
     setRevision((current) => current + 1);
+    setAuditRevision((current) => current + 1);
+  }
+
+  async function loadMoreAudit() {
+    if (auditLoading || auditPage.items.length >= auditPage.total) return;
+    setAuditLoading(true);
+    setAuditError("");
+    try {
+      const nextPage = await api.request(
+        `/api/admin/audit?limit=${auditPageSize}&offset=${auditPage.items.length}`,
+      );
+      setAuditPage((current) => ({
+        ...nextPage,
+        items: [...current.items, ...nextPage.items],
+      }));
+    } catch (error) {
+      setAuditError(error.message);
+    } finally {
+      setAuditLoading(false);
+    }
   }
 
   function openEditor(event, account) {
@@ -429,6 +510,52 @@ export default function UsersAccess() {
               label="User pages"
             />
           </>
+        )}
+        {canManage && (
+          <details className="ux-audit">
+            <summary>Account and target activity ({auditPage.total})</summary>
+            {auditLoading && auditPage.items.length === 0 ? (
+              <p role="status">Loading activity…</p>
+            ) : auditError ? (
+              <p role="alert">
+                {auditError}{" "}
+                <button onClick={() => setAuditRevision((value) => value + 1)}>
+                  Try again
+                </button>
+              </p>
+            ) : auditPage.items.length === 0 ? (
+              <p>No administrative activity yet.</p>
+            ) : (
+              <>
+                {auditPage.items.map((entry) => (
+                  <article className="ux-audit-entry" key={entry.id}>
+                    <p>
+                      <strong>{auditActionLabel(entry.action)}</strong>
+                      {entry.targetName && ` · ${entry.targetName}`}
+                      {entry.resourceExternalId &&
+                        ` · ${entry.resourceExternalId}`}
+                    </p>
+                    {auditDetails(entry) && <p>{auditDetails(entry)}</p>}
+                    <small>
+                      {entry.actorName}
+                      {entry.actorEmail && ` (${entry.actorEmail})`}
+                      {auditTimestamp(entry.createdAt) &&
+                        ` · ${auditTimestamp(entry.createdAt)}`}
+                    </small>
+                  </article>
+                ))}
+                {auditPage.items.length < auditPage.total && (
+                  <button
+                    type="button"
+                    disabled={auditLoading}
+                    onClick={loadMoreAudit}
+                  >
+                    {auditLoading ? "Loading…" : "Load more activity"}
+                  </button>
+                )}
+              </>
+            )}
+          </details>
         )}
         {editor && (
           <UserDialog
