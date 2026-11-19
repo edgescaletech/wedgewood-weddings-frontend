@@ -21,6 +21,15 @@ export function hasAllVenues(user) {
   );
 }
 
+// The API stores assignments per scope, so derive the displayed primary role.
+export function primaryRoleAssignment(assignments) {
+  return (
+    assignments.find(({ scope }) => scope === "global") ??
+    assignments.find(({ name }) => name === "General Manager") ??
+    assignments[0]
+  );
+}
+
 export function scopedRoles(user, venueId) {
   return user.roles.filter(
     (role) =>

@@ -13,6 +13,7 @@ import {
   emptyFilters,
   hasAllVenues,
   predefinedRoles,
+  primaryRoleAssignment,
   scopedRoles,
 } from "./access-model.js";
 import Pager from "./Pager.jsx";
@@ -28,6 +29,7 @@ const auditActionLabels = {
   "user.archive": "User archived",
   "user.deactivate": "User deactivated",
   "user.invite": "Invitation sent",
+  "user.invite.resend": "Invitation resent",
   "user.invitation.accept": "Invitation accepted",
   "user.update": "User updated",
   "role.assign": "Role assigned",
@@ -42,21 +44,30 @@ function auditActionLabel(action) {
   );
 }
 
-function auditDetails(entry) {
+function auditDetails(entry, venues) {
   const changedFields = entry.metadata?.fields;
   if (Array.isArray(changedFields) && changedFields.length > 0) {
-    return `Changed ${changedFields.join(", ")}.`;
+    const fieldNames = changedFields.map((field) =>
+      field === "displayName" ? "display name" : field,
+    );
+    return `Changed ${fieldNames.join(", ")}.`;
   }
   if (entry.resourceExternalId) {
-    return `${entry.resourceType || "Resource"}: ${entry.resourceExternalId}`;
+    return (
+      (entry.resourceType === "venue" &&
+        venues.get(entry.resourceExternalId)?.name) ||
+      entry.resourceExternalId
+    );
   }
   return "";
 }
 
-function auditTimestamp(value) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
-}
+const auditDateFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 export default function UsersAccess() {
   const { user, access, accessError, loading } = useAuth();
@@ -201,7 +212,7 @@ export default function UsersAccess() {
   const first = (page - 1) * pageSize;
   const roleLabel = filters.venue
     ? `Role at ${venues.get(filters.venue)?.name ?? filters.venue}`
-    : "Role";
+    : "Primary role";
 
   function updateFilter(field, value) {
     setFilters((previous) => ({
@@ -441,7 +452,10 @@ export default function UsersAccess() {
                           <small>{account.email}</small>
                         </td>
                         <td>
-                          {roleNames.join(", ") || "None assigned"}
+                          {(filters.venue
+                            ? roleNames.join(", ")
+                            : primaryRoleAssignment(account.roles)?.name) ||
+                            "None assigned"}
                           {filters.venue && canReadRoles && (
                             <small>
                               {account.canPublish
@@ -468,7 +482,7 @@ export default function UsersAccess() {
                         </td>
                         <td>
                           {own ? (
-                            <small>Your account</small>
+                            <span className="ux-own-account">Your account</span>
                           ) : canOpenAccount ? (
                             <button
                               aria-label={`${accountAction} ${account.displayName || account.email}`}
@@ -527,23 +541,24 @@ export default function UsersAccess() {
               <p>No administrative activity yet.</p>
             ) : (
               <>
-                {auditPage.items.map((entry) => (
-                  <article className="ux-audit-entry" key={entry.id}>
-                    <p>
-                      <strong>{auditActionLabel(entry.action)}</strong>
-                      {entry.targetName && ` · ${entry.targetName}`}
-                      {entry.resourceExternalId &&
-                        ` · ${entry.resourceExternalId}`}
-                    </p>
-                    {auditDetails(entry) && <p>{auditDetails(entry)}</p>}
-                    <small>
-                      {entry.actorName}
-                      {entry.actorEmail && ` (${entry.actorEmail})`}
-                      {auditTimestamp(entry.createdAt) &&
-                        ` · ${auditTimestamp(entry.createdAt)}`}
-                    </small>
-                  </article>
-                ))}
+                {auditPage.items.map((entry) => {
+                  const detail = auditDetails(entry, venues);
+                  const timestamp = new Date(entry.createdAt);
+                  return (
+                    <article className="ux-audit-entry" key={entry.id}>
+                      <p>
+                        <strong>{auditActionLabel(entry.action)}</strong>
+                        {entry.targetName && ` · ${entry.targetName}`}
+                        {detail && ` · ${detail}`}
+                      </p>
+                      <small>
+                        {entry.actorName}
+                        {!Number.isNaN(timestamp.getTime()) &&
+                          ` · ${auditDateFormat.format(timestamp)}`}
+                      </small>
+                    </article>
+                  );
+                })}
                 {auditPage.items.length < auditPage.total && (
                   <button
                     type="button"

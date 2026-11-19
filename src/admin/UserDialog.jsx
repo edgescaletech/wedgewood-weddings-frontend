@@ -16,6 +16,7 @@ import {
   accountStatus,
   assignmentChanges,
   groupRoleAssignments,
+  primaryRoleAssignment,
   rolePermissionSummary,
   saveUser,
 } from "./access-model.js";
@@ -39,6 +40,97 @@ const accountActions = {
     "WorkOS will resend the pending invitation or replace it if it expired.",
   ],
 };
+
+function publishingVenues(assignments, roles, venues) {
+  const publishingGrants = assignments.filter(({ roleId }) =>
+    roles.get(roleId)?.permissions?.includes("schedules.publish"),
+  );
+  const global = publishingGrants.some(({ venueId }) => !venueId);
+  const venueIds = global
+    ? [...venues.keys()]
+    : publishingGrants.map(({ venueId }) => venueId);
+  const activeVenues = new Set(
+    venueIds.filter((venueId) => venues.get(venueId)?.is_active === true),
+  );
+  return { global, activeVenues };
+}
+
+function PublishingImpact({ before, after, venues, inviting }) {
+  const gained = [...after.activeVenues].filter(
+    (id) => !before.activeVenues.has(id),
+  );
+  const lost = [...before.activeVenues].filter(
+    (id) => !after.activeVenues.has(id),
+  );
+  const gainedEverywhere =
+    after.global && !before.global && !before.activeVenues.size;
+  const lostEverywhere =
+    before.global && !after.global && !after.activeVenues.size;
+
+  function describe(label, ids, allVenues) {
+    if (allVenues) {
+      return <p><b>{label}</b> all venues</p>;
+    }
+    if (!ids.length) return null;
+
+    const names = ids
+      .map((id) => venues.get(id)?.name ?? id)
+      .sort((left, right) => left.localeCompare(right))
+      .join(", ");
+    if (ids.length <= 6) return <p><b>{label}</b> {names}</p>;
+
+    return (
+      <details>
+        <summary><b>{label}</b> {ids.length} venues</summary>
+        <p>{names}</p>
+      </details>
+    );
+  }
+
+  if (!gained.length && !lost.length && !gainedEverywhere && !lostEverywhere) {
+    return null;
+  }
+
+  const gainLabel = inviting
+    ? "Can publish after activation at"
+    : "Gains publishing at";
+
+  return (
+    <section className="ux-change-list" aria-label="Publishing changes">
+      {describe(gainLabel, gained, gainedEverywhere)}
+      {describe("Loses publishing at", lost, lostEverywhere)}
+    </section>
+  );
+}
+
+// Render the same access summary when reviewing edits, invites, or reactivation.
+function ReviewRoleGroups({ groups }) {
+  if (!groups.length) return <p>No roles assigned.</p>;
+
+  return (
+    <div className="ux-review-roles">
+      {groups.map((group) => {
+        const isAdmin = group.name === "Admin";
+        return (
+          <section className="ux-access-group" key={group.id}>
+            <h3>
+              {isAdmin ? "Admin permissions" : group.name}
+              {!isAdmin && <span> · {group.venues.length}</span>}
+            </h3>
+            <p>{rolePermissionSummary(group.permissions)}</p>
+            {!isAdmin && (
+              <ul>
+                {[...group.venues].sort((a, b) => a.localeCompare(b)).map(
+                  (venue, index) => <li key={index}>{venue}</li>,
+                )}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
 
 function VenuePicker({
   loadVenuePage,
@@ -262,11 +354,8 @@ export default function UserDialog({
     (role) => role.scope === "global" && role.name === "Admin",
   );
   const [primary, setPrimary] = useState(() => {
-    const globalRole = account?.roles.find((grant) => !grant.venueId)?.roleId;
-    const venueRole = account?.roles.find((grant) => grant.venueId)?.roleId;
     return (
-      globalRole ??
-      venueRole ??
+      primaryRoleAssignment(account?.roles ?? [])?.roleId ??
       (inviting && canEditVenues ? (scoped[0]?.id ?? "") : "")
     );
   });
@@ -297,30 +386,17 @@ export default function UserDialog({
   const reviewHasGlobal = reviewGrants.some(
     (grant) => grant.roleId === adminRole?.id,
   );
-  const activationPrimary =
-    account?.roles.find((grant) => !grant.venueId) ?? account?.roles[0];
+  const activationPrimary = primaryRoleAssignment(account?.roles ?? []);
   const roleGroups = groupRoleAssignments(reviewGrants, roles, allVenues);
   const venueCount = new Set(
     reviewGrants.map(({ venueId }) => venueId).filter(Boolean),
   ).size;
-  const canPublishAtAllVenues = reviewGrants.some(
-    (grant) =>
-      !grant.venueId &&
-      roles.get(grant.roleId)?.permissions?.includes("schedules.publish"),
+  const publishingBefore = publishingVenues(
+    activationReview ? [] : (account?.roles ?? []),
+    roles,
+    allVenues,
   );
-  const publishVenueNames = [
-    ...new Set(
-      reviewGrants
-        .filter(
-          (grant) =>
-            grant.venueId &&
-            (!activationReview ||
-              allVenues.get(grant.venueId)?.is_active === true) &&
-            roles.get(grant.roleId)?.permissions?.includes("schedules.publish"),
-        )
-        .map((grant) => allVenues.get(grant.venueId)?.name ?? grant.venueId),
-    ),
-  ];
+  const publishingAfter = publishingVenues(reviewGrants, roles, allVenues);
   const heading =
     stage === "action"
       ? activationReview
@@ -440,9 +516,7 @@ export default function UserDialog({
           setAccount(latest);
           setDraft(latest.roles);
           setPrimary(
-            latest.roles.find((grant) => !grant.venueId)?.roleId ??
-              latest.roles.find((grant) => grant.venueId)?.roleId ??
-              "",
+            primaryRoleAssignment(latest.roles)?.roleId ?? "",
           );
           setName(latest.displayName);
           setStage("edit");
@@ -546,14 +620,11 @@ export default function UserDialog({
                 <h3>{account.displayName || account.email}</h3>
                 <p>{account.email}</p>
               </div>
-              {(canPublishAtAllVenues || publishVenueNames.length > 0) && (
-                <p className="ux-impact">
-                  <strong>Gains publishing at</strong>{" "}
-                  {canPublishAtAllVenues
-                    ? "all venues"
-                    : publishVenueNames.join(", ")}
-                </p>
-              )}
+              <PublishingImpact
+                before={publishingBefore}
+                after={publishingAfter}
+                venues={allVenues}
+              />
               <dl className="ux-facts">
                 <div>
                   <dt>Primary role</dt>
@@ -570,25 +641,7 @@ export default function UserDialog({
                   </dd>
                 </div>
               </dl>
-              <section className="ux-review-roles">
-                {roleGroups.length ? (
-                  roleGroups.map((group) => (
-                    <div className="ux-access-group" key={group.id}>
-                      <h3>
-                        {group.name} <span>· {group.venues.length}</span>
-                      </h3>
-                      <p>{rolePermissionSummary(group.permissions)}</p>
-                      <ul>
-                        {group.venues.map((venueName) => (
-                          <li key={`${group.id}:${venueName}`}>{venueName}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))
-                ) : (
-                  <p>No roles assigned.</p>
-                )}
-              </section>
+              <ReviewRoleGroups groups={roleGroups} />
               <p className="ux-impact">
                 Reactivating this account restores access at active venues.
                 Suspended venues remain unavailable until they reopen.
@@ -607,15 +660,12 @@ export default function UserDialog({
               <h3>{name.trim() || email}</h3>
               <p>{email}</p>
             </div>
-            {inviting &&
-              (canPublishAtAllVenues || publishVenueNames.length > 0) && (
-                <p className="ux-impact">
-                  <strong>Can publish after activation at</strong>{" "}
-                  {canPublishAtAllVenues
-                    ? "all venues"
-                    : publishVenueNames.join(", ")}
-                </p>
-              )}
+            <PublishingImpact
+              before={publishingBefore}
+              after={publishingAfter}
+              venues={allVenues}
+              inviting={inviting || status === "Invited"}
+            />
             <dl className="ux-facts">
               <div>
                 <dt>Primary role</dt>
@@ -626,29 +676,11 @@ export default function UserDialog({
                 <dd>{hasGlobal ? "All venues" : `${venueCount} assigned`}</dd>
               </div>
             </dl>
-            <section className="ux-review-roles">
-              {roleGroups.length ? (
-                roleGroups.map((group) => (
-                  <div className="ux-access-group" key={group.id}>
-                    <h3>
-                      {group.name} <span>· {group.venues.length}</span>
-                    </h3>
-                    <p>{rolePermissionSummary(group.permissions)}</p>
-                    <ul>
-                      {group.venues.map((venueName) => (
-                        <li key={`${group.id}:${venueName}`}>{venueName}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))
-              ) : (
-                <p>No roles assigned.</p>
-              )}
-            </section>
+            <ReviewRoleGroups groups={roleGroups} />
             {!inviting &&
               (changes.added.length > 0 || changes.removed.length > 0) && (
                 <section className="ux-change-list">
-                  <h3>Changes to access</h3>
+                  <h3>Changes to venue access</h3>
                   {changes.added.map((grant) => (
                     <p key={`add:${grant.roleId}:${grant.venueId}`}>
                       <b>Add</b>

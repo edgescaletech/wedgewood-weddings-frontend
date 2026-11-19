@@ -20,6 +20,7 @@
   color: #203e35;
   font: 14px/1.4 "Wedgewood Plex", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: auto;
 }
 
 .users-access {
@@ -52,7 +53,7 @@
 }
 
 .users-access button:hover:not(:disabled) {
-  background: #eef3ed;
+  background: #edf2eb;
 }
 .users-access button:disabled {
   opacity: 0.45;
@@ -143,6 +144,7 @@
   color: var(--admin-green);
   text-decoration: none;
   font-weight: 600;
+  line-height: 1.4;
 }
 .users-access .rm-identity {
   margin-left: auto;
@@ -171,8 +173,9 @@
   margin-bottom: 24px;
 }
 .users-access h1 {
+  margin: 0;
   font-size: 32px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
 }
@@ -214,19 +217,34 @@
   font-weight: 400;
 }
 
-.users-access .ux-filters select {
+.users-access input::placeholder {
+  color: #626b60;
+  opacity: 1;
+}
+
+.users-access input {
+  caret-color: #245f47;
+}
+
+.users-access ::selection {
+  background: #c9dfce;
+}
+
+.users-access select {
+  appearance: none;
   min-height: 36px;
   line-height: 1.5;
   padding: 6px 30px 6px 9px;
-}
-
-.users-access .ux-dialog select {
-  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%2344554b' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 12px 8px;
 }
 
 .users-access input:disabled,
 .users-access select:disabled {
-  background: #eef0ed;
+  background-color: #eef0ed;
+  border-color: #d9dfd9;
   color: #68776e;
 }
 .users-access input[type="checkbox"] {
@@ -240,6 +258,18 @@
   align-items: center;
   gap: 7px;
   min-height: 39px;
+}
+.users-access .ux-filters .ux-publish-filter {
+  gap: 8px;
+  color: #214a36;
+  font-size: 13px;
+  cursor: pointer;
+}
+.users-access .ux-publish-filter input {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  accent-color: #1c6047;
 }
 .users-access .ux-filters button {
   justify-self: start;
@@ -257,7 +287,7 @@
   font-size: 13px;
 }
 .users-access .ux-table-head span {
-  color: var(--admin-muted);
+  color: #506459;
 }
 .users-access .ux-table-wrap {
   border: 1px solid #d5dfd5;
@@ -267,7 +297,9 @@
 }
 .users-access .rm-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
+  font-size: 13px;
 }
 .users-access .rm-table th,
 .users-access .rm-table td {
@@ -312,6 +344,9 @@
   text-align: right;
   white-space: nowrap;
 }
+.users-access .ux-own-account {
+  color: var(--admin-muted);
+}
 .users-access .ux-users button {
   font-size: 13px;
   padding: 7px 10px;
@@ -319,6 +354,7 @@
 .users-access .ux-more {
   color: #486655;
   font-size: 12px;
+  white-space: nowrap;
 }
 .users-access .rm-badge {
   display: inline-block;
@@ -371,36 +407,42 @@
 }
 .users-access .ux-toast {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: 16px;
+  bottom: 16px;
   z-index: 1000;
-  max-width: min(420px, calc(100vw - 32px));
+  max-width: min(360px, calc(100vw - 32px));
   padding: 12px 16px;
   border-radius: 6px;
   background: #183e30;
   box-shadow: 0 4px 20px #20382f26;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 .users-access .ux-audit {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid #d5ded5;
+  margin-top: 25px;
+  padding-top: 17px;
+  border-top: 1px solid var(--admin-line);
+  font-size: 13px;
 }
 .users-access .ux-audit summary {
-  color: #16523e;
+  color: var(--admin-green);
   cursor: pointer;
   font-weight: 600;
 }
 .users-access .ux-audit-entry {
-  padding: 14px 0;
-  border-bottom: 1px solid #d5ded5;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-line);
 }
 .users-access .ux-audit-entry p {
-  margin: 0 0 5px;
+  margin: 0;
 }
 .users-access .ux-audit-entry small {
+  display: block;
   color: var(--admin-muted);
+  font-size: 11px;
+  margin-top: 5px;
+  line-height: 1.7;
 }
 .users-access .ux-sr-only {
   position: absolute;
@@ -452,21 +494,25 @@ body:has(.users-access dialog[open]) {
   flex-wrap: wrap;
   border-top: 1px solid #d8e1d8;
   background: #f6f8f4;
-  color: #5f6d65;
-  font-size: 11px;
 }
 .users-access .ux-dialog > footer button {
   min-height: 36px;
   font-size: 12px;
+}
+.users-access .ux-dialog > footer button:not(.primary) {
+  color: #5f6d65;
+}
+.users-access .ux-dialog > footer button.danger:not(.primary) {
+  color: #96372a;
 }
 .users-access .ux-dialog header small {
   font-size: 12px;
   color: #52665b;
 }
 .users-access .ux-dialog h2 {
-  margin-top: 1px;
+  margin: 1px 0 0;
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.025em;
 }
 .users-access .ux-dialog .ux-close {
@@ -487,7 +533,12 @@ body:has(.users-access dialog[open]) {
   overflow: auto;
   overscroll-behavior: contain;
   padding: 18px 22px;
+  overflow-anchor: none;
   scrollbar-gutter: stable;
+}
+.users-access .ux-dialog input:disabled {
+  cursor: default;
+  opacity: 1;
 }
 .users-access .ux-form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -505,7 +556,9 @@ body:has(.users-access dialog[open]) {
 .users-access .ux-picker h3,
 .users-access .ux-access-group h3,
 .users-access .ux-change-list h3 {
+  margin: 0;
   font-size: 16px;
+  letter-spacing: -0.025em;
 }
 .users-access button.ux-text-button {
   background: transparent;
@@ -515,6 +568,9 @@ body:has(.users-access dialog[open]) {
   text-underline-offset: 3px;
   font-size: 13px;
   padding: 6px 0;
+}
+.users-access button.ux-text-button[aria-pressed="true"] {
+  font-weight: 700;
 }
 .users-access .ux-pick-row {
   display: grid;
@@ -546,14 +602,19 @@ body:has(.users-access dialog[open]) {
   display: block;
   color: #5b6d61;
   font-size: 11px;
+  font-weight: 400;
 }
 .users-access .ux-pick-row select {
   font-size: 12px;
-  min-height: 32px;
-  padding: 5px 15px 5px 7px;
 }
 .users-access .ux-dialog .ux-pager {
   padding: 10px 0 2px;
+  gap: 5px;
+}
+.users-access .ux-dialog .ux-pager button {
+  min-height: 31px;
+  min-width: 30px;
+  padding: 5px 8px;
 }
 .users-access .ux-error {
   color: #943c22;
@@ -562,6 +623,8 @@ body:has(.users-access dialog[open]) {
 }
 .users-access .ux-person h3 {
   font-size: 22px;
+  margin: 0;
+  letter-spacing: -0.025em;
 }
 .users-access .ux-person p,
 .users-access .ux-access-group p {
@@ -581,16 +644,20 @@ body:has(.users-access dialog[open]) {
   color: #53695a;
 }
 .users-access .ux-facts dd {
-  margin-top: 2px;
+  margin: 2px 0 0;
   font-weight: 600;
 }
 .users-access .ux-access-group {
-  margin: 14px 0;
+  margin: 10px 0 15px;
+}
+.users-access .ux-access-group h3 span {
+  font-weight: 400;
 }
 .users-access .ux-access-group ul {
   display: grid;
   grid-template-columns: 1fr 1fr;
   list-style: none;
+  padding: 0;
   margin: 8px 0;
   border-top: 1px solid #dbe3db;
 }
@@ -654,12 +721,33 @@ body:has(.users-access dialog[open]) {
   .users-access .ux-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .users-access .rm-table {
+    min-width: 0;
+  }
+}
+
+/* Keep the desktop column alignment stable across pages of different users. */
+@media (min-width: 1120px) {
+  .users-access .ux-users {
+    table-layout: fixed;
+  }
+  .users-access .ux-users th:nth-child(1) {
+    width: 29%;
+  }
+  .users-access .ux-users th:nth-child(2) {
+    width: 18.75%;
+  }
+  .users-access .ux-users th:nth-child(3) {
+    width: 28%;
+  }
+  .users-access .ux-users th:nth-child(4) {
+    width: 11%;
+  }
 }
 
 @media (max-width: 600px) {
   .users-access .ux-toast {
-    right: 16px;
-    bottom: 16px;
+    font-size: 12px;
   }
   .users-access .ux-page {
     padding: 23px 16px;
@@ -681,6 +769,11 @@ body:has(.users-access dialog[open]) {
   .users-access .ux-filters {
     padding: 12px;
     gap: 10px;
+  }
+  .users-access .ux-section-title,
+  .users-access .ux-table-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
   .users-access .ux-users thead {
     position: absolute;
