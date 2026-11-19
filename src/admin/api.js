@@ -134,7 +134,9 @@ export function loadUserPage(api, page, size, filters, signal) {
     {
       search: filters.query.trim(),
       role: filters.role,
-      status: filters.status.toLowerCase(),
+      // The API uses "inactive" for linked accounts awaiting reactivation.
+      status:
+        filters.status === "Deactivated" ? "inactive" : filters.status.toLowerCase(),
       venueId: filters.venue,
       canPublish: filters.publish,
     },

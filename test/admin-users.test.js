@@ -137,7 +137,7 @@ test("venue role changes replace the assignment atomically and keep unrelated gr
 test("account status distinguishes active, invited, inactive and archived", () => {
   assert.equal(accountStatus({ isActive: true }), "Active");
   assert.equal(accountStatus({ workosId: null }), "Invited");
-  assert.equal(accountStatus({ workosId: "linked" }), "Inactive");
+  assert.equal(accountStatus({ workosId: "linked" }), "Deactivated");
   assert.equal(accountStatus({ archivedAt: "2026-11-16" }), "Archived");
 });
 

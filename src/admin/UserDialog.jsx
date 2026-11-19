@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   prefetchNextVenuePage,
   requestInvitation,
@@ -88,7 +94,15 @@ function VenuePicker({
     return () => {
       cancelled = true;
     };
-  }, [loadVenuePage, onVenuesLoaded, search, page, selectedOnly, attempt, size]);
+  }, [
+    loadVenuePage,
+    onVenuesLoaded,
+    search,
+    page,
+    selectedOnly,
+    attempt,
+    size,
+  ]);
 
   const total = selectedOnly ? selectedVenues.length : (venuePage?.total ?? 0);
   const currentPage = selectedOnly
@@ -224,9 +238,12 @@ export default function UserDialog({
   const [account, setAccount] = useState(editor.account);
   const inviting = !editor.account;
   const path = account ? userPath(account.id) : usersPath;
+  const status = account && accountStatus(account);
+  const deactivated = status === "Deactivated";
   const editable = inviting || (account.id !== ownId && !account.archivedAt);
-  const canEditName = editable && canManage;
-  const canEditRoles = editable && canAssign;
+  const canReactivate = deactivated && editable && canManage;
+  const canEditName = editable && !deactivated && canManage;
+  const canEditRoles = editable && !deactivated && canAssign;
   const canEditVenues = canEditRoles && canManageVenues;
   const [loadedVenues, setLoadedVenues] = useState(() => new Map());
   const rememberVenuePage = useCallback((pageVenues) => {
@@ -258,6 +275,7 @@ export default function UserDialog({
   const [draft, setDraft] = useState(account?.roles ?? []);
   const [stage, setStage] = useState("edit");
   const [action, setAction] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const [error, setError] = useState("");
@@ -270,21 +288,34 @@ export default function UserDialog({
     changes.added.length > 0 ||
     changes.removed.length > 0;
   const hasGlobal = draft.some((grant) => grant.roleId === adminRole?.id);
-  const roleGroups = groupRoleAssignments(draft, roles, allVenues);
+  const hasVenueAssignment = draft.some((grant) => grant.venueId);
+  const validInviteDetails =
+    name.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const activationReview = stage === "action" && action === "activate";
+  // Reactivation uses saved assignments, independent of anything in the draft.
+  const reviewGrants = activationReview ? account.roles : draft;
+  const reviewHasGlobal = reviewGrants.some(
+    (grant) => grant.roleId === adminRole?.id,
+  );
+  const activationPrimary =
+    account?.roles.find((grant) => !grant.venueId) ?? account?.roles[0];
+  const roleGroups = groupRoleAssignments(reviewGrants, roles, allVenues);
   const venueCount = new Set(
-    draft.map(({ venueId }) => venueId).filter(Boolean),
+    reviewGrants.map(({ venueId }) => venueId).filter(Boolean),
   ).size;
-  const canPublishAtAllVenues = draft.some(
+  const canPublishAtAllVenues = reviewGrants.some(
     (grant) =>
       !grant.venueId &&
       roles.get(grant.roleId)?.permissions?.includes("schedules.publish"),
   );
   const publishVenueNames = [
     ...new Set(
-      draft
+      reviewGrants
         .filter(
           (grant) =>
             grant.venueId &&
+            (!activationReview ||
+              allVenues.get(grant.venueId)?.is_active === true) &&
             roles.get(grant.roleId)?.permissions?.includes("schedules.publish"),
         )
         .map((grant) => allVenues.get(grant.venueId)?.name ?? grant.venueId),
@@ -292,7 +323,9 @@ export default function UserDialog({
   ];
   const heading =
     stage === "action"
-      ? accountActions[action][0]
+      ? activationReview
+        ? "Confirm changes"
+        : accountActions[action][0]
       : stage === "review"
         ? inviting
           ? "Confirm invitation"
@@ -301,7 +334,14 @@ export default function UserDialog({
           ? "Invite user"
           : editable && (canEditName || canEditRoles)
             ? "Edit user"
-            : "User access";
+            : deactivated
+              ? "Deactivated account"
+              : "User access";
+
+  const discarding = confirmation === "discard";
+  const confirmationTitle = discarding
+    ? "Discard unsaved changes?"
+    : "Clear venue assignments?";
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -313,11 +353,23 @@ export default function UserDialog({
   }, [editor]);
   useEffect(() => {
     titleRef.current.focus();
-  }, [stage]);
+  }, [stage, confirmation]);
 
   function close() {
-    if (!busy && (!dirty || window.confirm("Discard changes to this user?")))
-      onClose();
+    if (busy) return;
+    if (confirmation) setConfirmation("");
+    else if (dirty) setConfirmation("discard");
+    else onClose();
+  }
+
+  function selectPrimaryRole(roleId) {
+    const venueGrants = draft.filter(({ venueId }) => venueId);
+    setPrimary(roleId);
+    setDraft(
+      roleId === adminRole?.id
+        ? [{ roleId, venueId: null }]
+        : venueGrants.map((grant) => ({ ...grant, roleId })),
+    );
   }
 
   function review(event) {
@@ -375,9 +427,7 @@ export default function UserDialog({
             venueId: venueId ?? null,
           })),
         });
-        onChange(
-          "Invitation sent. Activate the user after they accept and sign in.",
-        );
+        onChange(`Succefully Created Invitation for user "${name.trim()}".`, { toast: true });
       } else {
         const latest = await api.request(path);
         const difference = assignmentChanges(latest.roles, account.roles);
@@ -447,7 +497,6 @@ export default function UserDialog({
     return `${role} · ${grant.venueId ? (venues.get(grant.venueId)?.name ?? grant.venueId) : "Global"}`;
   }
 
-  const status = account && accountStatus(account);
   return (
     <dialog
       ref={dialogRef}
@@ -460,11 +509,16 @@ export default function UserDialog({
     >
       <header>
         <div>
-          {stage !== "action" && (canEditName || canEditRoles) && (
-            <small>Step {stage === "review" ? "2" : "1"} of 2</small>
+          {!confirmation &&
+            ((stage !== "action" &&
+              (canEditName || canEditRoles || canReactivate)) ||
+              activationReview) && (
+            <small>
+              Step {stage === "review" || activationReview ? "2" : "1"} of 2
+            </small>
           )}
           <h2 ref={titleRef} tabIndex={-1} id="user-dialog-title">
-            {heading}
+            {confirmation ? confirmationTitle : heading}
           </h2>
         </div>
         <button
@@ -478,13 +532,76 @@ export default function UserDialog({
         </button>
       </header>
       <div className="ux-dialog-body" aria-busy={busy}>
-        {stage === "action" && (
-          <>
-            <h3>{account.displayName || account.email}</h3>
-            <p>{accountActions[action][1]}</p>
-          </>
+        {confirmation && (
+          <p>
+            {discarding
+              ? "Your unsaved changes will be lost."
+              : "Selecting Admin replaces the selected venue assignments with global access."}
+          </p>
         )}
-        {stage === "review" && (
+        {!confirmation && stage === "action" && (
+          activationReview ? (
+            <>
+              <div className="ux-person">
+                <h3>{account.displayName || account.email}</h3>
+                <p>{account.email}</p>
+              </div>
+              {(canPublishAtAllVenues || publishVenueNames.length > 0) && (
+                <p className="ux-impact">
+                  <strong>Gains publishing at</strong>{" "}
+                  {canPublishAtAllVenues
+                    ? "all venues"
+                    : publishVenueNames.join(", ")}
+                </p>
+              )}
+              <dl className="ux-facts">
+                <div>
+                  <dt>Primary role</dt>
+                  <dd>
+                    {activationPrimary?.name ??
+                      roles.get(activationPrimary?.roleId)?.name ??
+                      "None assigned"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Venue access</dt>
+                  <dd>
+                    {reviewHasGlobal ? "All active venues" : `${venueCount} assigned`}
+                  </dd>
+                </div>
+              </dl>
+              <section className="ux-review-roles">
+                {roleGroups.length ? (
+                  roleGroups.map((group) => (
+                    <div className="ux-access-group" key={group.id}>
+                      <h3>
+                        {group.name} <span>· {group.venues.length}</span>
+                      </h3>
+                      <p>{rolePermissionSummary(group.permissions)}</p>
+                      <ul>
+                        {group.venues.map((venueName) => (
+                          <li key={`${group.id}:${venueName}`}>{venueName}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                ) : (
+                  <p>No roles assigned.</p>
+                )}
+              </section>
+              <p className="ux-impact">
+                Reactivating this account restores access at active venues.
+                Suspended venues remain unavailable until they reopen.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3>{account.displayName || account.email}</h3>
+              <p>{accountActions[action][1]}</p>
+            </>
+          )
+        )}
+        {!confirmation && stage === "review" && (
           <>
             <div className="ux-person">
               <h3>{name.trim() || email}</h3>
@@ -502,15 +619,11 @@ export default function UserDialog({
             <dl className="ux-facts">
               <div>
                 <dt>Primary role</dt>
-                <dd>{roles.get(primary)?.name ?? "No role"}</dd>
+                <dd>{roles.get(primary)?.name ?? "None assigned"}</dd>
               </div>
               <div>
                 <dt>Venue access</dt>
-                <dd>
-                  {hasGlobal
-                    ? "All venues"
-                    : `${venueCount} assigned`}
-                </dd>
+                <dd>{hasGlobal ? "All venues" : `${venueCount} assigned`}</dd>
               </div>
             </dl>
             <section className="ux-review-roles">
@@ -552,8 +665,14 @@ export default function UserDialog({
               )}
           </>
         )}
-        {stage === "edit" && (
-          <form id="user-form" onSubmit={review}>
+        {!confirmation && stage === "edit" && deactivated && (
+          <div className="ux-person">
+            <h3>{account.displayName || account.email}</h3>
+            <p>{account.email}</p>
+          </div>
+        )}
+        {stage === "edit" && !deactivated && (
+          <form id="user-form" onSubmit={review} hidden={Boolean(confirmation)}>
             <div className="ux-form-grid">
               <label>
                 Name
@@ -585,26 +704,17 @@ export default function UserDialog({
                   value={primary}
                   onChange={(event) => {
                     const roleId = event.target.value;
-                    const venueGrants = draft.filter(({ venueId }) => venueId);
                     if (
                       roleId === adminRole?.id &&
-                      venueGrants.length > 0 &&
-                      !window.confirm("Clear the selected venue assignments?")
-                    )
+                      hasVenueAssignment
+                    ) {
+                      setConfirmation("clear-venues");
                       return;
-                    setPrimary(roleId);
-                    if (roleId === adminRole?.id) {
-                      setDraft([{ roleId, venueId: null }]);
-                    } else if (!roleId) {
-                      setDraft([]);
-                    } else {
-                      setDraft(
-                        venueGrants.map((grant) => ({ ...grant, roleId })),
-                      );
                     }
+                    selectPrimaryRole(roleId);
                   }}
                 >
-                  <option value="">No role</option>
+                  {!primary && <option value="" disabled>Select a role</option>}
                   {adminRole && (
                     <option value={adminRole.id}>{adminRole.name}</option>
                   )}
@@ -635,102 +745,148 @@ export default function UserDialog({
             )}
           </form>
         )}
-        {error && (
+        {!confirmation && error && (
           <p className="ux-error" role="alert">
             {error}
           </p>
         )}
       </div>
-      <footer>
-        <div className="ux-secondary">
-          {stage === "edit" && !inviting && canEditName && (
-            <>
-              {status !== "Invited" && (
+      {confirmation ? (
+        <footer>
+          <div className="ux-secondary" />
+          <button type="button" onClick={() => setConfirmation("")}>
+            {discarding ? "Keep editing" : "Cancel"}
+          </button>
+          <button
+            type="button"
+            className="primary danger"
+            onClick={() => {
+              if (discarding) onClose();
+              else {
+                selectPrimaryRole(adminRole.id);
+                setConfirmation("");
+              }
+            }}
+          >
+            {discarding ? "Discard changes" : "Clear venue assignments"}
+          </button>
+        </footer>
+      ) : (
+        <footer>
+          <div className="ux-secondary">
+            {stage === "edit" && !inviting && canEditName && (
+              <>
+                {status !== "Invited" && (
+                  <button
+                    type="button"
+                    className="quiet"
+                    onClick={() => {
+                      setError("");
+                      setAction("deactivate");
+                      setStage("action");
+                    }}
+                  >
+                    Deactivate user
+                  </button>
+                )}
+                {status === "Invited" && (
+                  <button
+                    type="button"
+                    className="quiet"
+                    onClick={() => {
+                      setError("");
+                      setAction("resend");
+                      setStage("action");
+                    }}
+                  >
+                    Resend invitation
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="quiet"
+                  className="quiet danger"
                   onClick={() => {
                     setError("");
-                    setAction(account.isActive ? "deactivate" : "activate");
+                    setAction("archive");
                     setStage("action");
                   }}
                 >
-                  {account.isActive ? "Deactivate user" : "Activate user"}
+                  Archive user
                 </button>
-              )}
-              {status === "Invited" && (
-                <button
-                  type="button"
-                  className="quiet"
-                  onClick={() => {
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={
+              stage === "edit"
+                ? close
+                : () => {
                     setError("");
-                    setAction("resend");
-                    setStage("action");
-                  }}
-                >
-                  Resend invitation
-                </button>
-              )}
+                    setStage("edit");
+                  }
+            }
+          >
+            {stage === "edit"
+              ? canEditName || canEditRoles
+                ? "Cancel"
+                : "Close"
+              : "Back"}
+          </button>
+          {stage === "edit" ? (
+            canReactivate ? (
               <button
                 type="button"
-                className="quiet"
+                className="primary"
                 onClick={() => {
                   setError("");
-                  setAction("archive");
+                  setAction("activate");
                   setStage("action");
                 }}
               >
-                Archive user
+                Reactivate user
               </button>
-            </>
-          )}
-        </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={
-            stage === "edit"
-              ? close
-              : () => {
-                  setError("");
-                  setStage("edit");
+            ) : (canEditName || canEditRoles) && (
+              <button
+                type="submit"
+                form="user-form"
+                className="primary"
+                disabled={
+                  needsRefresh ||
+                  (inviting &&
+                    (!validInviteDetails ||
+                      (!hasGlobal && !hasVenueAssignment))) ||
+                  (!inviting && !dirty)
                 }
-          }
-        >
-          {stage === "edit"
-            ? canEditName || canEditRoles
-              ? "Cancel"
-              : "Close"
-            : "Back"}
-        </button>
-        {stage === "edit" ? (
-          (canEditName || canEditRoles) && (
+              >
+                Next
+              </button>
+            )
+          ) : (
             <button
-              type="submit"
-              form="user-form"
-              className="primary"
-              disabled={needsRefresh || (!inviting && !dirty)}
+              type="button"
+              className={
+                stage === "action" && action === "archive"
+                  ? "primary danger"
+                  : "primary"
+              }
+              disabled={busy}
+              onClick={submit}
             >
-              Next
+              {busy
+                ? "Working…"
+                : stage === "action"
+                  ? activationReview
+                    ? "Reactivate user"
+                    : accountActions[action][0]
+                  : inviting
+                    ? "Create invitation"
+                    : "Save changes"}
             </button>
-          )
-        ) : (
-          <button
-            type="button"
-            className="primary"
-            disabled={busy}
-            onClick={submit}
-          >
-            {busy
-              ? "Working…"
-              : stage === "action"
-                ? accountActions[action][0]
-                : inviting
-                  ? "Create invitation"
-                  : "Save changes"}
-          </button>
-        )}
-      </footer>
+          )}
+        </footer>
+      )}
     </dialog>
   );
 }

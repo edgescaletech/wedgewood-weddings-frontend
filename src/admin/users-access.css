@@ -66,14 +66,35 @@
 .users-access button.primary:hover:not(:disabled) {
   background: #1c604b;
 }
+.users-access button.primary:disabled {
+  background: #a9b8ae;
+  border-color: #a9b8ae;
+  color: #f8faf8;
+}
 .users-access button.quiet {
   background: transparent;
   border-color: transparent;
   font-weight: 400;
 }
-.users-access :focus-visible {
-  outline: 2px solid #ad7a25;
+.users-access :focus-visible,
+.users-access input:focus,
+.users-access select:focus {
+  outline: 2px solid #287451;
   outline-offset: 3px;
+}
+.users-access button.quiet.danger {
+  color: #96372a;
+}
+.users-access button.quiet.danger:hover:not(:disabled) {
+  background: #faeeeb;
+}
+.users-access button.primary.danger {
+  background: #96372a;
+  border-color: #96372a;
+}
+.users-access button.primary.danger:hover:not(:disabled) {
+  background: #79291f;
+  border-color: #79291f;
 }
 
 .users-access .rm-shellbar {
@@ -350,6 +371,19 @@
 .users-access .ux-notice button {
   margin-left: 8px;
 }
+.users-access .ux-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: #183e30;
+  box-shadow: 0 4px 20px #20382f26;
+  color: #fff;
+  font-size: 14px;
+}
 .users-access .ux-sr-only {
   position: absolute;
   width: 1px;
@@ -605,6 +639,10 @@ body:has(.users-access dialog[open]) {
 }
 
 @media (max-width: 600px) {
+  .users-access .ux-toast {
+    right: 16px;
+    bottom: 16px;
+  }
   .users-access .ux-page {
     padding: 23px 16px;
   }

@@ -44,7 +44,15 @@ export default function UsersAccess() {
   const [page, setPage] = useState(1);
   const [editor, setEditor] = useState(null);
   const [notice, setNotice] = useState("");
+  const [toast, setToast] = useState("");
   const [invitationKeys] = useState(() => new Map());
+
+  useEffect(() => {
+    if (!toast) return undefined;
+
+    const timeout = window.setTimeout(() => setToast(""), 6500);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const loadVenuePage = useMemo(() => createVenuePageLoader(api), [user?.id]);
   const canBrowseVenues = canView && canAssign && canManageVenues;
@@ -143,8 +151,9 @@ export default function UsersAccess() {
     setPage(1);
   }
 
-  function refresh(message) {
-    if (message) setNotice(message);
+  function refresh(message, { toast: showToast = false } = {}) {
+    if (message && showToast) setToast(message);
+    else if (message) setNotice(message);
     setRevision((current) => current + 1);
   }
 
@@ -252,7 +261,7 @@ export default function UsersAccess() {
                   }
                 >
                   <option value="">All statuses</option>
-                  {["Active", "Invited", "Inactive", "Archived"].map(
+                  {["Active", "Invited", "Deactivated", "Archived"].map(
                     (status) => (
                       <option key={status}>{status}</option>
                     ),
@@ -339,6 +348,11 @@ export default function UsersAccess() {
                       ),
                     ];
                     const own = account.id === user.id;
+                    const deactivated = status === "Deactivated";
+                    const accountAction = deactivated ? "Reactivate user" : "Edit user";
+                    const canOpenAccount = deactivated
+                      ? canManage
+                      : status !== "Archived" && (canManage || canAssign);
                     return (
                       <tr key={account.id}>
                         <td>
@@ -374,13 +388,12 @@ export default function UsersAccess() {
                         <td>
                           {own ? (
                             <small>Your account</small>
-                          ) : status !== "Archived" &&
-                            (canManage || canAssign) ? (
+                          ) : canOpenAccount ? (
                             <button
-                              aria-label={`Edit user ${account.displayName || account.email}`}
+                              aria-label={`${accountAction} ${account.displayName || account.email}`}
                               onClick={(event) => openEditor(event, account)}
                             >
-                              Edit user
+                              {accountAction}
                             </button>
                           ) : null}
                         </td>
@@ -434,6 +447,11 @@ export default function UsersAccess() {
           />
         )}
       </main>
+      {toast && (
+        <div className="ux-toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ export function accountStatus(user) {
   if (user.archivedAt) return "Archived";
   if (user.isActive) return "Active";
   if (!user.workosId) return "Invited";
-  return "Inactive";
+  return "Deactivated";
 }
 
 export function hasAllVenues(user) {
