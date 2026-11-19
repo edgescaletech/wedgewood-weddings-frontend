@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   prefetchNextVenuePage,
   requestInvitation,
@@ -6,7 +6,13 @@ import {
   usersPath,
   venuePageSize,
 } from "./api.js";
-import { accountStatus, assignmentChanges, saveUser } from "./access-model.js";
+import {
+  accountStatus,
+  assignmentChanges,
+  groupRoleAssignments,
+  rolePermissionSummary,
+  saveUser,
+} from "./access-model.js";
 import Pager from "./Pager.jsx";
 
 const accountActions = {
@@ -31,6 +37,7 @@ const accountActions = {
 function VenuePicker({
   loadVenuePage,
   venues,
+  onVenuesLoaded,
   scopedRoles,
   draft,
   setDraft,
@@ -66,6 +73,7 @@ function VenuePicker({
     loadVenuePage(page, search)
       .then((result) => {
         if (cancelled) return;
+        onVenuesLoaded(result.items);
         const lastPage = Math.max(1, Math.ceil(result.total / size));
         if (page > lastPage) {
           setPage(lastPage);
@@ -80,7 +88,7 @@ function VenuePicker({
     return () => {
       cancelled = true;
     };
-  }, [loadVenuePage, search, page, selectedOnly, attempt, size]);
+  }, [loadVenuePage, onVenuesLoaded, search, page, selectedOnly, attempt, size]);
 
   const total = selectedOnly ? selectedVenues.length : (venuePage?.total ?? 0);
   const currentPage = selectedOnly
@@ -220,6 +228,18 @@ export default function UserDialog({
   const canEditName = editable && canManage;
   const canEditRoles = editable && canAssign;
   const canEditVenues = canEditRoles && canManageVenues;
+  const [loadedVenues, setLoadedVenues] = useState(() => new Map());
+  const rememberVenuePage = useCallback((pageVenues) => {
+    setLoadedVenues((current) => {
+      const next = new Map(current);
+      pageVenues.forEach((venue) => next.set(venue.id, venue));
+      return next;
+    });
+  }, []);
+  const allVenues = useMemo(
+    () => new Map([...venues, ...loadedVenues]),
+    [venues, loadedVenues],
+  );
   const scoped = [...roles.values()].filter((role) => role.scope === "venue");
   const adminRole = [...roles.values()].find(
     (role) => role.scope === "global" && role.name === "Admin",
@@ -250,6 +270,26 @@ export default function UserDialog({
     changes.added.length > 0 ||
     changes.removed.length > 0;
   const hasGlobal = draft.some((grant) => grant.roleId === adminRole?.id);
+  const roleGroups = groupRoleAssignments(draft, roles, allVenues);
+  const venueCount = new Set(
+    draft.map(({ venueId }) => venueId).filter(Boolean),
+  ).size;
+  const canPublishAtAllVenues = draft.some(
+    (grant) =>
+      !grant.venueId &&
+      roles.get(grant.roleId)?.permissions?.includes("schedules.publish"),
+  );
+  const publishVenueNames = [
+    ...new Set(
+      draft
+        .filter(
+          (grant) =>
+            grant.venueId &&
+            roles.get(grant.roleId)?.permissions?.includes("schedules.publish"),
+        )
+        .map((grant) => allVenues.get(grant.venueId)?.name ?? grant.venueId),
+    ),
+  ];
   const heading =
     stage === "action"
       ? accountActions[action][0]
@@ -450,36 +490,44 @@ export default function UserDialog({
               <h3>{name.trim() || email}</h3>
               <p>{email}</p>
             </div>
-            {inviting && (
-              <p className="ux-impact">
-                WorkOS will email an invitation. The user must accept it, sign
-                in, and be activated before gaining access.
-              </p>
-            )}
+            {inviting &&
+              (canPublishAtAllVenues || publishVenueNames.length > 0) && (
+                <p className="ux-impact">
+                  <strong>Can publish after activation at</strong>{" "}
+                  {canPublishAtAllVenues
+                    ? "all venues"
+                    : publishVenueNames.join(", ")}
+                </p>
+              )}
             <dl className="ux-facts">
+              <div>
+                <dt>Primary role</dt>
+                <dd>{roles.get(primary)?.name ?? "No role"}</dd>
+              </div>
               <div>
                 <dt>Venue access</dt>
                 <dd>
                   {hasGlobal
                     ? "All venues"
-                    : `${new Set(draft.map(({ venueId }) => venueId).filter(Boolean)).size} assigned`}
+                    : `${venueCount} assigned`}
                 </dd>
               </div>
             </dl>
-            <section className="ux-access-group">
-              <h3>Assigned roles</h3>
-              {draft.length ? (
-                <ul>
-                  {draft.map((grant) => {
-                    const description = roles.get(grant.roleId)?.description;
-                    return (
-                      <li key={`${grant.roleId}:${grant.venueId}`}>
-                        {grantLabel(grant)}
-                        {description && <small>{description}</small>}
-                      </li>
-                    );
-                  })}
-                </ul>
+            <section className="ux-review-roles">
+              {roleGroups.length ? (
+                roleGroups.map((group) => (
+                  <div className="ux-access-group" key={group.id}>
+                    <h3>
+                      {group.name} <span>· {group.venues.length}</span>
+                    </h3>
+                    <p>{rolePermissionSummary(group.permissions)}</p>
+                    <ul>
+                      {group.venues.map((venueName) => (
+                        <li key={`${group.id}:${venueName}`}>{venueName}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
               ) : (
                 <p>No roles assigned.</p>
               )}
@@ -577,7 +625,8 @@ export default function UserDialog({
             {canEditVenues && (!inviting || (primary && !hasGlobal)) && (
               <VenuePicker
                 loadVenuePage={loadVenuePage}
-                venues={venues}
+                venues={allVenues}
+                onVenuesLoaded={rememberVenuePage}
                 scopedRoles={scoped}
                 draft={draft}
                 setDraft={setDraft}

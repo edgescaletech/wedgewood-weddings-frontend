@@ -542,6 +542,9 @@ body:has(.users-access dialog[open]) {
   margin: 8px 0;
   border-top: 1px solid #dbe3db;
 }
+.users-access .ux-review-roles .ux-access-group ul {
+  grid-template-columns: 1fr;
+}
 .users-access .ux-access-group li {
   padding: 6px 4px;
   border-bottom: 1px solid #e1e7e1;

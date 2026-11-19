@@ -13,8 +13,43 @@ import {
   accountStatus,
   assignmentChanges,
   emptyFilters,
+  groupRoleAssignments,
+  rolePermissionSummary,
   saveUser,
 } from "../src/admin/access-model.js";
+
+test("invitation review groups venues under each role and lists capabilities", () => {
+  const groups = groupRoleAssignments(
+    [
+      { roleId: "manager", venueId: "venue-a" },
+      { roleId: "scheduler", venueId: "venue-b" },
+    ],
+    new Map([
+      ["manager", { name: "General Manager", permissions: ["schedules.publish"] }],
+      ["scheduler", { name: "Venue Scheduler", permissions: ["schedules.edit"] }],
+    ]),
+    new Map([
+      ["venue-a", { name: "Abbey Catering" }],
+      ["venue-b", { name: "Alexander Homestead" }],
+    ]),
+  );
+
+  assert.deepEqual(
+    groups.map(({ name, venues }) => [name, venues]),
+    [
+      ["General Manager", ["Abbey Catering"]],
+      ["Venue Scheduler", ["Alexander Homestead"]],
+    ],
+  );
+  assert.equal(
+    rolePermissionSummary(groups[0].permissions),
+    "publish schedules",
+  );
+  assert.equal(
+    rolePermissionSummary(["schedules.view", "schedules.edit"]),
+    "Edit draft schedules",
+  );
+});
 
 test("invitation and resend carry cookies and reuse the same UUID after 503", async () => {
   const calls = [];

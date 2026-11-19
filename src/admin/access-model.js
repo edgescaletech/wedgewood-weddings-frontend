@@ -30,6 +30,90 @@ export function scopedRoles(user, venueId) {
   );
 }
 
+export function groupRoleAssignments(assignments, roles, venues) {
+  const groups = new Map();
+
+  for (const assignment of assignments) {
+    let group = groups.get(assignment.roleId);
+    if (!group) {
+      const role = roles.get(assignment.roleId);
+      group = {
+        id: assignment.roleId,
+        name: role?.name ?? assignment.name ?? "Role",
+        permissions: role?.permissions ?? [],
+        venues: [],
+      };
+      groups.set(assignment.roleId, group);
+    }
+
+    group.venues.push(
+      assignment.venueId
+        ? (venues.get(assignment.venueId)?.name ?? assignment.venueId)
+        : "All venues",
+    );
+  }
+
+  return [...groups.values()];
+}
+
+export function rolePermissionSummary(permissions) {
+  const permissionKeys = new Set(permissions ?? []);
+  const summary = [];
+  const permissionLabels = {
+    "labor_goals.manage": "Manage labor goals",
+    "roles.assign": "Assign roles",
+    "roles.manage": "Manage role permissions",
+    "roles.view": "View roles",
+    "users.manage": "Manage users",
+    "users.view": "View users",
+    "venues.manage_access": "Manage venue access",
+  };
+  const knownKeys = new Set([
+    ...Object.keys(permissionLabels),
+    "schedules.view",
+    "schedules.create",
+    "schedules.edit",
+    "schedules.approve",
+    "schedules.publish",
+    "schedules.cancel",
+    "labor_goals.view",
+  ]);
+
+  if (permissionKeys.has("schedules.create") || permissionKeys.has("schedules.edit")) {
+    summary.push("Edit draft schedules");
+  } else if (permissionKeys.has("schedules.view")) {
+    summary.push("View schedules");
+  }
+
+  const scheduleActions = [
+    ["schedules.approve", "approve"],
+    ["schedules.publish", "publish"],
+    ["schedules.cancel", "cancel"],
+  ]
+    .filter(([key]) => permissionKeys.has(key))
+    .map(([, label]) => label);
+  if (scheduleActions.length) {
+    summary.push(`${scheduleActions.join(", ")} schedules`);
+  }
+
+  if (permissionKeys.has("labor_goals.view")) {
+    summary.push("View labor goals");
+  }
+
+  summary.push(
+    ...[...permissionKeys]
+      .filter((permission) => permissionLabels[permission])
+      .map((permission) => permissionLabels[permission]),
+  );
+
+  const unlistedPermissions = [...permissionKeys].filter(
+    (permission) => !knownKeys.has(permission),
+  );
+  summary.push(...unlistedPermissions);
+
+  return summary.join("; ") || "No permissions configured";
+}
+
 function sameGrant(first, second) {
   return (
     first.roleId === second.roleId &&
