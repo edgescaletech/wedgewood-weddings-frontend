@@ -76,10 +76,8 @@
   border-color: transparent;
   font-weight: 400;
 }
-.users-access :focus-visible,
-.users-access input:focus,
-.users-access select:focus {
-  outline: 2px solid #287451;
+.users-access :focus-visible {
+  outline: 2px solid #245f47;
   outline-offset: 3px;
 }
 .users-access button.quiet.danger {
