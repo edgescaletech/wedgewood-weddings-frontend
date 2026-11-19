@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/admin/users",
+      "destination": "/admin/users.html"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://wedgewood-dev-api.onrender.com/api/:path*"
     },

@@ -8,6 +8,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        users: resolve(projectDir, 'admin/users.html'),
         events: resolve(projectDir, 'index.html'),
         login: resolve(projectDir, 'login/index.html'),
         resetPassword: resolve(projectDir, 'reset-password/index.html'),
