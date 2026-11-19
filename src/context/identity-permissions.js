@@ -9,3 +9,10 @@ export function resolveIdentityPermissions(identity) {
   }
   return { role, permissions };
 }
+
+export function hasAdminDashboardAccess(access) {
+  return (
+    access?.global?.roles?.includes("Admin") === true &&
+    access?.global?.permissions?.includes("users.view") === true
+  );
+}

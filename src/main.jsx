@@ -6,6 +6,7 @@ import Staffing, { styles as staffingStyles } from "./pages/staffing.jsx";
 import Goals, { styles as goalsStyles } from "./pages/goals.jsx";
 import UsersAccess from "./admin/UsersAccess.jsx";
 import Login from "./pages/login.jsx";
+import { hasAdminDashboardAccess } from "./context/identity-permissions.js";
 import "../style.css";
 
 const pages = {
@@ -57,6 +58,8 @@ const page = getPage();
 function ProtectedPage() {
   const [status, setStatus] = useState("checking");
   const [attempt, setAttempt] = useState(0);
+  const { access, accessError, loading: accessLoading } = useAuth();
+  const isAdmin = hasAdminDashboardAccess(access);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,6 +84,43 @@ function ProtectedPage() {
     checkSession();
     return () => controller.abort();
   }, [attempt]);
+
+  useEffect(() => {
+    if (
+      page === "users" &&
+      status === "authenticated" &&
+      !accessLoading &&
+      !accessError &&
+      !isAdmin
+    ) {
+      window.location.replace("/staffing/");
+    }
+  }, [accessError, accessLoading, isAdmin, status]);
+
+  if (status === "authenticated" && page === "users") {
+    if (accessLoading) {
+      return (
+        <main role="status" style={{ padding: "24px", textAlign: "center" }}>
+          Checking Admin access…
+        </main>
+      );
+    }
+    if (accessError || !access) {
+      return (
+        <main role="alert" style={{ padding: "24px", textAlign: "center" }}>
+          Unable to check your Admin access. {" "}
+          <button onClick={() => window.location.reload()}>Try again</button>
+        </main>
+      );
+    }
+    if (!isAdmin) {
+      return (
+        <main role="status" style={{ padding: "24px", textAlign: "center" }}>
+          Returning to your work dashboard…
+        </main>
+      );
+    }
+  }
 
   if (status === "authenticated") return <Page />;
   if (status === "unavailable") {

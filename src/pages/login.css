@@ -113,3 +113,13 @@
     min-height: 100dvh;
   }
 }
+
+.login-button-secondary {
+  background: #f1f5f1;
+  color: #1e4a38;
+  border: 1px solid #d2ddd4;
+}
+
+.login-button-secondary:hover {
+  background: #e5eee7;
+}

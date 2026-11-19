@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveIdentityPermissions } from "../src/context/identity-permissions.js";
+import {
+  hasAdminDashboardAccess,
+  resolveIdentityPermissions,
+} from "../src/context/identity-permissions.js";
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -50,6 +53,27 @@ test("A role alone does not grant permissions", () => {
   const resolved = resolveIdentityPermissions({ role: "General Manager" });
   assert.deepEqual(Object.keys(resolved.permissions), []);
   assert.equal(resolved.permissions.toString, undefined);
+});
+
+test("only an Admin with users.view can open the Admin dashboard", () => {
+  assert.equal(
+    hasAdminDashboardAccess({
+      global: { roles: ["Admin"], permissions: ["users.view"] },
+    }),
+    true,
+  );
+  assert.equal(
+    hasAdminDashboardAccess({
+      global: { roles: ["Admin"], permissions: [] },
+    }),
+    false,
+  );
+  assert.equal(
+    hasAdminDashboardAccess({
+      global: { roles: ["General Manager"], permissions: ["users.view"] },
+    }),
+    false,
+  );
 });
 
 test("Auth Role Matrix - custom server-provided Scheduler permissions", () => {

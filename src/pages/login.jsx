@@ -1,6 +1,7 @@
 import { API_BASE_URL as apiBase } from "../config.js";
 import React, { useEffect, useState } from "react";
 import PasswordInput from "../components/PasswordInput.jsx";
+import { hasAdminDashboardAccess } from "../context/identity-permissions.js";
 import "./login.css";
 
 
@@ -16,6 +17,7 @@ export default function Login() {
   const [code, setCode] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
@@ -29,9 +31,12 @@ export default function Login() {
           credentials: "include",
           signal: controller.signal,
         });
-        const nextStatus = response.ok
-          ? "signed-in"
-          : response.status === 403
+        if (response.ok) {
+          await routeSignedInUser(controller.signal);
+          return;
+        }
+        const nextStatus =
+          response.status === 403
             ? "inactive"
             : response.status === 401
               ? "signed-out"
@@ -47,6 +52,27 @@ export default function Login() {
     checkSession();
     return () => controller.abort();
   }, []);
+
+  async function routeSignedInUser(signal) {
+    const response = await fetch(`${apiBase}/auth/access`, {
+      credentials: "include",
+      cache: "no-store",
+      signal,
+    });
+    if (!response.ok) {
+      setStatus("unavailable");
+      return;
+    }
+
+    const access = await response.json();
+    if (hasAdminDashboardAccess(access)) {
+      setIsAdmin(true);
+      setStatus("signed-in");
+      return;
+    }
+
+    window.location.replace("/staffing/");
+  }
 
   async function signIn(event) {
     event.preventDefault();
@@ -80,7 +106,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) window.location.assign("/");
+      if (account.ok) await routeSignedInUser();
       else if (account.status === 403) setStatus("inactive");
       else {
         setFormError(
@@ -122,7 +148,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) window.location.assign("/");
+      if (account.ok) await routeSignedInUser();
       else if (account.status === 403) {
         setView("login");
         setStatus("inactive");
@@ -192,6 +218,7 @@ export default function Login() {
 
   async function signOut() {
     setStatus("signing-out");
+    setIsAdmin(false);
     try {
       const response = await fetch(`${apiBase}/auth/logout`, {
         method: "POST",
@@ -412,11 +439,20 @@ export default function Login() {
             ) : status === "signed-in" ? (
               <div className="login-message" role="status">
                 <strong>You’re signed in.</strong>
-                <p>Continue to your scheduling workspace.</p>
-                <a className="login-button" href="/">
-                  Continue to workspace <span aria-hidden="true">→</span>
+                <p>Choose where you want to continue.</p>
+                <a className="login-button" href="/staffing/">
+                  Continue to work dashboard <span aria-hidden="true">→</span>
                 </a>
-                 <button className="login-secondary" onClick={signOut}>
+                {isAdmin && (
+                  <a
+                    className="login-button login-button-secondary"
+                    href="/admin/users"
+                  >
+                    Continue to Admin dashboard{" "}
+                    <span aria-hidden="true">→</span>
+                  </a>
+                )}
+                <button className="login-secondary" onClick={signOut}>
                   Sign out
                 </button>
               </div>
