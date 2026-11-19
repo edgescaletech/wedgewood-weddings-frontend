@@ -7,6 +7,7 @@ export default function DayActionBar({
   onSelectEvent,
   onToggleEventDetails,
   showEventDetails = false,
+  onOpenBeoPdf,
 }) {
   const formattedDate = selectedDate ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -59,7 +60,7 @@ export default function DayActionBar({
             className="btn btn-outline"
             id="btn-beo-pdf"
             title="BEO PDF download"
-            onClick={() => alert('BEO PDF viewer simulation')}
+            onClick={onOpenBeoPdf}
           >
             BEO PDF
           </button>

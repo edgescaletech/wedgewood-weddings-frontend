@@ -106,11 +106,11 @@ export default function WeekRibbon({
                   <div className="le-metrics-row">
                     <div className="le-stat">
                       <span className="le-label">FOH LE</span>
-                      <span className="le-value" style={{ color: '#dc2626' }}>2.11</span>
+                      <span className="le-value" style={{ color: '#64748b' }}>—</span>
                     </div>
                     <div className="le-stat">
                       <span className="le-label">BOH LE</span>
-                      <span className="le-value" style={{ color: '#dc2626' }}>3.53</span>
+                      <span className="le-value" style={{ color: '#64748b' }}>—</span>
                     </div>
                   </div>
               </div>

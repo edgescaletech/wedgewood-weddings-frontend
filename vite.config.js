@@ -5,6 +5,19 @@ import { fileURLToPath } from 'node:url';
 const projectDir = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     rollupOptions: {
       input: {
@@ -16,6 +29,8 @@ export default defineConfig({
         staffingRoute: resolve(projectDir, 'staffing/index.html'),
         goals: resolve(projectDir, 'goals.html'),
         goalsRoute: resolve(projectDir, 'goals/index.html'),
+        adminGoals: resolve(projectDir, 'admin-goals.html'),
+        adminGoalsRoute: resolve(projectDir, 'admin-goals/index.html'),
       },
     },
   },
