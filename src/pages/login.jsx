@@ -12,7 +12,10 @@ const resetToken = window.__passwordResetToken || "";
 delete window.__passwordResetToken;
 
 export default function Login() {
-  const [status, setStatus] = useState(isResetPage ? "signed-out" : "checking");
+  const [inviteComplete] = useState(() =>
+    !isResetPage && window.location.hash === "#invite-complete",
+  );
+  const [status, setStatus] = useState(isResetPage || inviteComplete ? "signed-out" : "checking");
   const [view, setView] = useState(isResetPage ? "reset" : "login");
   const [code, setCode] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -22,6 +25,10 @@ export default function Login() {
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
+    if (inviteComplete) {
+      window.history.replaceState(window.history.state, "", "/login");
+      return undefined;
+    }
     if (isResetPage) return undefined;
     const controller = new AbortController();
     async function checkSession() {
@@ -50,7 +57,7 @@ export default function Login() {
     }
     checkSession();
     return () => controller.abort();
-  }, []);
+  }, [inviteComplete]);
 
   async function routeSignedInUser(signal) {
     const response = await fetch(`${apiBase}/auth/access`, {
@@ -427,7 +434,9 @@ export default function Login() {
             ) : (
               <>
                 <p className="login-explanation">
-                  Use your Wedgewood account to securely access your workspace.
+                  {inviteComplete
+                    ? "Your password has been created successfully. Sign in to continue once your administrator activates your account."
+                    : "Use your Wedgewood account to securely access your workspace."}
                 </p>
                 {status === "unavailable" && (
                   <p className="login-alert" role="alert">

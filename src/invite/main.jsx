@@ -21,7 +21,6 @@ const inviteHeadings = {
   details: "Welcome to Wedgewood",
   password: "Create your password",
   verify: "Verify your email",
-  complete: "Setup complete",
 };
 
 async function postAuth(path, body, signal) {
@@ -80,12 +79,6 @@ function InvitePage() {
     return () => controller.abort();
   }, [lookupAttempt]);
 
-  useEffect(() => {
-    if (step !== "complete") return;
-    const timer = window.setTimeout(() => window.location.replace("/login"), 5000);
-    return () => window.clearTimeout(timer);
-  }, [step]);
-
   function generate() {
     const generated = generatePassword(minimumLength);
     setPassword(generated);
@@ -141,7 +134,11 @@ function InvitePage() {
         setConfirmation("");
         setCode("");
         setCopyStatus("");
-        setStep(path === "/invite/verify" ? "password" : "complete");
+        if (path === "/invite/password") {
+          window.location.replace("/login#invite-complete");
+          return;
+        }
+        setStep("password");
         return;
       }
       const result = await response.json().catch(() => ({}));
@@ -183,11 +180,6 @@ function InvitePage() {
               <header className="invite-heading">
                 <h1 id="invite-title">{inviteHeadings[step]}</h1>
               </header>
-            )}
-            {step === "complete" && (
-              <div className="login-message" role="status">
-                <p>Your password has been created successfully. Sign in to continue.</p>
-              </div>
             )}
             {["details", "password", "verify"].includes(step) && profile && (
               <form className="login-form" onSubmit={submit}>
@@ -284,9 +276,6 @@ function InvitePage() {
               <button type="button" className="login-secondary" onClick={() => setLookupAttempt((attempt) => attempt + 1)}>
                 Try again
               </button>
-            )}
-            {step === "complete" && (
-              <a className="login-button" href="/login">Continue to sign-in</a>
             )}
           </section>
         </div>
