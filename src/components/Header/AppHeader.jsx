@@ -181,7 +181,7 @@ export default function AppHeader({
             <div className="more-dropdown-menu" role="menu">
               {hasAdminDashboardAccess(access) ? (
                 <a href="/admin/users" className="more-menu-item" role="menuitem">
-                  <span>Users &amp; access</span>
+                  <span>Admin Dashboard</span>
                   <span className="menu-arrow">›</span>
                 </a>
               ) : hasLaborTargetsAccess(access) ? (
