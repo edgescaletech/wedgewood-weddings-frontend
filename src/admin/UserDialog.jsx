@@ -486,12 +486,13 @@ export default function UserDialog({
         else if (action === "archive")
           await api.request(path, { method: "DELETE" });
         else await api.request(`${path}/${action}`, { method: "POST" });
+        const userName = account.displayName || account.email;
         onChange(
           {
-            activate: "User activated.",
-            deactivate: "User deactivated.",
-            archive: "User archived.",
-            resend: "Invitation sent.",
+            activate: `${userName}’s account is now active.`,
+            deactivate: `Deactivated ${userName}’s account.`,
+            archive: `Archived ${userName}’s account.`,
+            resend: `Resent the invitation to ${userName}.`,
           }[action],
         );
       } else if (inviting) {
@@ -503,7 +504,7 @@ export default function UserDialog({
             venueId: venueId ?? null,
           })),
         });
-        onChange(`Succefully Created Invitation for user "${name.trim()}".`, { toast: true });
+        onChange(`Sent an invitation to ${name.trim()}.`);
       } else {
         const latest = await api.request(path);
         const difference = assignmentChanges(latest.roles, account.roles);
@@ -526,7 +527,7 @@ export default function UserDialog({
           return;
         }
         await saveUser(api, path, account, name.trim(), changes);
-        onChange("User updated.");
+        onChange(`Saved changes to ${name.trim()}’s account.`);
       }
       onClose();
     } catch (failure) {

@@ -90,8 +90,7 @@ export default function UsersAccess() {
   const [filters, setFilters] = useState(emptyFilters);
   const [page, setPage] = useState(1);
   const [editor, setEditor] = useState(null);
-  const [notice, setNotice] = useState("");
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState(null);
   const [auditPage, setAuditPage] = useState({ items: [], total: 0 });
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState("");
@@ -101,7 +100,7 @@ export default function UsersAccess() {
   useEffect(() => {
     if (!toast) return undefined;
 
-    const timeout = window.setTimeout(() => setToast(""), 6500);
+    const timeout = window.setTimeout(() => setToast(null), 6500);
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
@@ -223,9 +222,8 @@ export default function UsersAccess() {
     setPage(1);
   }
 
-  function refresh(message, { toast: showToast = false } = {}) {
-    if (message && showToast) setToast(message);
-    else if (message) setNotice(message);
+  function refresh(message) {
+    if (message) setToast({ message });
     setRevision((current) => current + 1);
     setAuditRevision((current) => current + 1);
   }
@@ -250,7 +248,6 @@ export default function UsersAccess() {
   }
 
   function openEditor(event, account) {
-    setNotice("");
     if (canBrowseVenues) prefetchMoreVenuePages(loadVenuePage).catch(() => {});
     setEditor({ account, trigger: event.currentTarget });
   }
@@ -292,11 +289,6 @@ export default function UsersAccess() {
             </button>
           )}
         </header>
-        {notice && (
-          <div className="ux-notice" role="status">
-            {notice} <button onClick={() => setNotice("")}>Dismiss</button>
-          </div>
-        )}
         {loading && <p role="status">Checking access…</p>}
         {!loading && (accessError || !user) && (
           <p role="alert">
@@ -441,7 +433,6 @@ export default function UsersAccess() {
                     ];
                     const own = account.id === user.id;
                     const deactivated = status === "Deactivated";
-                    const accountAction = deactivated ? "Reactivate user" : "Edit user";
                     const canOpenAccount = deactivated
                       ? canManage
                       : status !== "Archived" && (canManage || canAssign);
@@ -485,10 +476,10 @@ export default function UsersAccess() {
                             <span className="ux-own-account">Your account</span>
                           ) : canOpenAccount ? (
                             <button
-                              aria-label={`${accountAction} ${account.displayName || account.email}`}
+                              aria-label={`Edit user ${account.displayName || account.email}`}
                               onClick={(event) => openEditor(event, account)}
                             >
-                              {accountAction}
+                              Edit user
                             </button>
                           ) : null}
                         </td>
@@ -591,7 +582,7 @@ export default function UsersAccess() {
       </main>
       {toast && (
         <div className="ux-toast" role="status" aria-live="polite">
-          {toast}
+          {toast.message}
         </div>
       )}
     </div>

@@ -395,16 +395,6 @@
   text-align: center;
   color: var(--admin-muted);
 }
-.users-access .ux-notice {
-  margin-bottom: 14px;
-  padding: 9px 14px;
-  border: 1px solid #cbded1;
-  border-radius: 6px;
-  background: #eef5ef;
-}
-.users-access .ux-notice button {
-  margin-left: 8px;
-}
 .users-access .ux-toast {
   position: fixed;
   right: 16px;
