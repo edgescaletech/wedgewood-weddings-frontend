@@ -1,5 +1,30 @@
 {
+  "headers": [
+    {
+      "source": "/invite/:path*",
+      "headers": [
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/invite",
+      "destination": "/invite/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/users.html"
+    },
+    {
+      "source": "/admin/labor-targets",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/admin/users.html"
+    },
     {
       "source": "/api/:path*",
       "destination": "https://wedgewood-dev-api.onrender.com/api/:path*"

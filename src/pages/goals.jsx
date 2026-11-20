@@ -113,7 +113,7 @@ export default function GoalsPage() {
       <nav className={"sub-nav-bar"}>
         <a href={"/staffing"} className={"sub-nav-tab"}>{"Schedule"}</a>
         <div className={"sub-nav-tab active"}>{"Goals & budgets"}</div>
-        <a href={"/admin-goals"} className={"sub-nav-tab"} style={{"color": "#166534", "fontWeight": 600}}>{"Admin: Labor targets"}</a>
+
         <div className={"sub-nav-tab"} style={{"color": "#94a3b8"}}>{"Help, history & sync"}</div>
         <div className={"sub-nav-tab"} style={{"color": "#94a3b8"}}>{"Prototype controls"}</div>
       </nav>

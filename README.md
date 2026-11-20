@@ -23,12 +23,14 @@ Restart Vite after changing `.env`. For deployment, set the value in the build e
    make run
    ```
 
-3. Configure the backend `.env` with `APP_URL=http://localhost:3000`, then open `http://localhost:3000/login/`. The login form submits credentials to the backend, which authenticates them with WorkOS and sets a session cookie. The frontend sends that cookie with event requests. The custom flow supports email verification and password reset. MFA and SSO challenges are not yet supported. New accounts are currently active by default; existing inactive accounts still require activation.
+3. Configure the backend `.env` with `APP_URL=http://localhost:3000`, then open `http://localhost:3000/login/`. The login form submits credentials to the backend, which authenticates them with WorkOS and sets a session cookie. The frontend sends that cookie with event requests. The custom flow supports email verification and password reset. MFA and SSO challenges are not yet supported. Invited accounts require Admin activation.
 
-For temporary signup, open `http://localhost:3000/signup/`, create an account, then sign in and complete email verification if prompted. The local account is created on the first successful sign-in. To remove signup, delete the `signup/` directory and its entry in `vite.config.js`, and disable the backend `/auth/signup` route as described in the backend README.
+An Admin sends your WorkOS invitation. Set the application's **User invitation URL** to the frontend `/invite` route and enable WorkOS Magic Auth email delivery. Open the link, confirm your read-only name and email, click Continue, and enter the emailed code. Set your password and use `/login` after an Admin activates your account. The short-lived onboarding cookie lets you refresh the password screen. Set `VITE_WORKOS_PASSWORD_MIN_LENGTH` to match your WorkOS password minimum. WorkOS applies its full policy.
 
 
-The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login, signup, and password recovery remain public.
+The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login and password recovery remain public. The UI enables permission-controlled actions only when the identity response supplies a role and the relevant permission.
+
+`/admin` opens Users & access. The Admin navigation includes **Labor efficiency targets** at `/admin/labor-targets` for users with the global `labor_goals.manage` permission. That page imports labor targets and accounting periods using CSV. The venue cards display illustrative data, as labeled on the page.
 
 ## Build
 
@@ -40,7 +42,7 @@ The static production files are written to `dist/`.
 
 ## Email verification and password reset
 
-When WorkOS requires email verification, sign in with your email and password, then enter the code sent to your email. New local accounts are currently created active.
+When WorkOS requires email verification during sign-in or invitation setup, enter the code sent to your email.
 
 Select **Forgot password?** on the login page to request a reset email. In the WorkOS dashboard, configure the password-reset URL under **Applications → your application → Redirects** to point to the frontend, for example `http://localhost:3000/reset-password/` locally. The reset page reads the `token` in the email link and removes it from the address bar before loading external resources. After a successful reset, sign in with your new password.
 

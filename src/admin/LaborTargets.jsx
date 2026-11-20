@@ -1,8 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { API_BASE_URL } from '../config.js';
-import styles from './admin-goals.css?inline';
-
-export { styles };
+import './labor-targets.css';
 
 const apiBase = API_BASE_URL || '';
 const LABOR_TARGETS_URL = `${apiBase}/api/admin/labor-goals/upload`;
@@ -204,7 +202,12 @@ export default function AdminGoalsPage() {
   // Upload state
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);  // { imported, updated, skipped, errors[] }
-  const [uploadError, setUploadError] = useState('');
+  const [toast, setToast] = useState(null);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeout = window.setTimeout(() => setToast(null), 6500);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
   const [importHistory, setImportHistory] = useState([]);   // [{ ts, type, imported, updated, skipped }]
   const fileInputRef = useRef(null);
 
@@ -217,7 +220,7 @@ export default function AdminGoalsPage() {
   const handleSwitchUploadType = (type) => {
     setUploadType(type);
     setUploadResult(null);
-    setUploadError('');
+
     setPastedCSV('');
   };
 
@@ -232,7 +235,7 @@ export default function AdminGoalsPage() {
   async function submitUpload(fetchInit) {
     setUploading(true);
     setUploadResult(null);
-    setUploadError('');
+
     try {
       const res = await fetch(activeUrl, {
         credentials: 'include',
@@ -249,11 +252,12 @@ export default function AdminGoalsPage() {
 
       if (!res.ok) {
         const errorMsg = json?.error || (text ? `Server error (${res.status}): ${text}` : `HTTP ${res.status} ${res.statusText}`);
-        setUploadError(errorMsg);
+        setToast({ message: errorMsg, error: true });
       } else if (!json) {
-        setUploadError(`Backend returned an empty response. Please check that the backend is running ('cd backend && make run').`);
+        setToast({ message: 'The server returned no import result. Try again.', error: true });
       } else {
         setUploadResult(json);
+        setToast({ message: `Import complete. ${json.imported} imported, ${json.updated} updated, ${json.skipped} skipped.` });
         setImportHistory(prev => [
           {
             ts: new Date().toLocaleString(),
@@ -263,8 +267,8 @@ export default function AdminGoalsPage() {
           ...prev,
         ]);
       }
-    } catch (err) {
-      setUploadError('Failed to connect to backend: ' + err.message + '. Please ensure the Go server is running (cd backend && make run).');
+    } catch {
+      setToast({ message: 'Could not reach the server. Try the import again.', error: true });
     } finally {
       setUploading(false);
     }
@@ -316,54 +320,20 @@ export default function AdminGoalsPage() {
 
 
   return (
-    <div className="admin-goals-body">
-      {/* Top App Header */}
-      <header className="admin-header">
-        <div className="admin-header-left">
-          <div className="brand-wrapper">
-            <div className="admin-brand-logo">W</div>
-            <div className="brand-text-block">
-              <span className="brand-title-main">Wedgewood</span>
-              <span className="brand-sub-scheduling">Scheduling</span>
-            </div>
-          </div>
-
-          <nav className="admin-nav-tabs">
-            <a href="/staffing" className="admin-nav-item">Venues</a>
-            <span className="admin-nav-item">Users & access</span>
-            <span className="admin-nav-item active">Labor efficiency targets</span>
-          </nav>
+    <main id="labor-targets-workspace" className="ux-page labor-targets">
+      <header className="rm-heading">
+        <div>
+          <h1>Labor efficiency targets</h1>
+          <p className="admin-page-subtitle">Guests per labor hour, by venue.</p>
         </div>
-
-        <div className="admin-header-right">
-          <div className="user-profile-block">
-            <div className="user-name">Dana Scully</div>
-            <div className="user-role-label">Regional Manager · Admin</div>
-          </div>
-        </div>
+        <button type="button" className={showUpload ? undefined : "primary"}
+          aria-expanded={showUpload} onClick={() => setShowUpload(!showUpload)}>
+          {showUpload ? "Close upload" : "Upload targets"}
+        </button>
       </header>
-
-      {/* Demo Controls Bar */}
-      <div className="demo-controls-bar">
-        <span className="demo-pill">▶ Demo controls</span>
-        <span>Regional Manager · Fictional data</span>
-      </div>
-
-      <main className="admin-container">
-        {/* Title & Action Row */}
-        <div className="admin-page-title-row">
-          <div>
-            <h1 className="admin-page-title">Labor efficiency targets</h1>
-            <p className="admin-page-subtitle">Guests per labor hour, by venue.</p>
-          </div>
-          <button
-            type="button"
-            className="btn-upload-targets-toggle"
-            onClick={() => setShowUpload(!showUpload)}
-          >
-            {showUpload ? 'Close upload' : 'Upload targets'}
-          </button>
-        </div>
+      {toast && (
+        <div className="ux-toast" role={toast.error ? "alert" : "status"}>{toast.message}</div>
+      )}
 
         {/* Collapsible Upload targets Card */}
         {showUpload && (
@@ -410,27 +380,13 @@ export default function AdminGoalsPage() {
               </div>
             </div>
 
-            {/* Result banner */}
-            {uploadError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', fontSize: '13px' }}>
-                ✗ {uploadError}
-              </div>
-            )}
-            {uploadResult && (
-              <div style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '6px', marginBottom: '8px', fontSize: '13px' }}>
-                <strong>✓ Import complete</strong> — {uploadResult.imported} row{uploadResult.imported !== 1 ? 's' : ''} imported
-                {uploadResult.skipped > 0 && `, ${uploadResult.skipped} skipped`}.
-                {uploadResult.errors?.length > 0 && (
-                  <details style={{ marginTop: '6px' }}>
-                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-                      {uploadResult.errors.length} warning{uploadResult.errors.length !== 1 ? 's' : ''}
-                    </summary>
-                    <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
-                      {uploadResult.errors.map((e, i) => <li key={i}>{e}</li>)}
-                    </ul>
-                  </details>
-                )}
-              </div>
+            {uploadResult?.errors?.length > 0 && (
+              <details className="import-warnings">
+                <summary>{uploadResult.errors.length} import warnings</summary>
+                <ul>
+                  {uploadResult.errors.map((error, index) => <li key={index}>{error}</li>)}
+                </ul>
+              </details>
             )}
 
             <div className="upload-actions-row">
@@ -746,8 +702,7 @@ export default function AdminGoalsPage() {
             })}
           </div>
         </section>
-      </main>
-    </div>
+    </main>
   );
 }
 
