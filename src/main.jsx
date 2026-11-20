@@ -68,26 +68,45 @@ function ProtectedPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let checking = false;
 
     async function checkSession() {
+      if (checking) return;
+      checking = true;
       try {
         const response = await fetch(`${apiBase}/auth/me`, {
           credentials: "include",
           cache: "no-store",
           signal: controller.signal,
         });
+        if (controller.signal.aborted) return;
         if (response.status === 401 || response.status === 403) {
+          setStatus("redirecting");
           window.location.replace("/login");
           return;
         }
         setStatus(response.ok ? "authenticated" : "unavailable");
       } catch (error) {
         if (error.name !== "AbortError") setStatus("unavailable");
+      } finally {
+        checking = false;
       }
     }
 
+    function checkRestoredSession(event) {
+      if (event.persisted) checkSession();
+    }
+
     checkSession();
-    return () => controller.abort();
+    window.addEventListener("focus", checkSession);
+    window.addEventListener("pageshow", checkRestoredSession);
+    window.addEventListener("popstate", checkSession);
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", checkSession);
+      window.removeEventListener("pageshow", checkRestoredSession);
+      window.removeEventListener("popstate", checkSession);
+    };
   }, [attempt]);
 
   useEffect(() => {
@@ -128,6 +147,7 @@ function ProtectedPage() {
   }
 
   if (status === "authenticated") return <Page />;
+  if (status === "redirecting") return null;
   if (status === "unavailable") {
     return (
       <main role="alert" style={{ padding: "24px", textAlign: "center" }}>
