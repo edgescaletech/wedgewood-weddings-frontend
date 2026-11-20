@@ -4,8 +4,25 @@ import assert from "node:assert/strict";
 import {
   hasAdminDashboardAccess,
   hasLaborTargetsAccess,
+  hasVenuePermission,
   resolveIdentityPermissions,
 } from "../src/context/identity-permissions.js";
+
+test("venue permissions follow the selected venue and inherited global grants", () => {
+  const access = {
+    global: { permissions: ["schedules.view"] },
+    venues: {
+      a: { permissions: ["schedules.edit", "labor_goals.view"] },
+      b: { permissions: ["schedules.view"] },
+    },
+  };
+  assert.equal(hasVenuePermission(access, "a", "schedules.edit"), true);
+  assert.equal(hasVenuePermission(access, "b", "schedules.edit"), false);
+  assert.equal(hasVenuePermission(access, "b", "schedules.view"), true);
+  assert.equal(hasVenuePermission(access, "missing", "schedules.view"), false);
+  assert.equal(hasVenuePermission(access, "", "schedules.view"), false);
+  assert.equal(hasVenuePermission(null, "a", "schedules.view"), false);
+});
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
