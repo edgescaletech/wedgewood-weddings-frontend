@@ -5,6 +5,7 @@ import {
   createAdminApi,
   createVenuePageLoader,
   directoryPage,
+  invitationRetryKeys,
   loadUserPage,
   prefetchMoreVenuePages,
   prefetchNextVenuePage,
@@ -15,6 +16,7 @@ import {
   assignmentChanges,
   emptyFilters,
   groupRoleAssignments,
+  primaryRoleAssignment,
   rolePermissionSummary,
   saveUser,
 } from "../src/admin/access-model.js";
@@ -99,6 +101,56 @@ test("invitation and resend carry cookies and reuse the same UUID after 503", as
     "/backend/api/admin/users/local-id/invitation/resend",
   );
   assert.ok(calls.every(({ credentials }) => credentials === "include"));
+});
+
+test("an interrupted invitation reuses its key after reload and reordered venue selection", async () => {
+  const entries = new Map();
+  const storage = () => ({
+    getItem: (key) => entries.get(key),
+    setItem: (key, value) => entries.set(key, value),
+    removeItem: (key) => entries.delete(key),
+  });
+  const calls = [];
+  const api = createAdminApi("", async (path, options) => {
+    calls.push(options);
+    return new Response(null, { status: calls.length === 1 ? 503 : 204 });
+  });
+  const body = {
+    displayName: "Test User",
+    email: "user@example.test",
+    roles: [
+      { roleId: "scheduler", venueId: "venue-b" },
+      { roleId: "manager", venueId: "venue-a" },
+    ],
+  };
+  const endpoint = "/api/admin/users";
+  const key = "123e4567-e89b-42d3-a456-426614174000";
+  const keys = invitationRetryKeys("admin-1", storage);
+  await assert.rejects(requestInvitation(api, keys, endpoint, body, () => key));
+  assert.deepEqual([...entries.values()], [key]);
+  assert.match([...entries.keys()][0], /^wedgewood:admin-invitation:admin-1:[a-f0-9]{64}$/);
+  await requestInvitation(
+    api,
+    invitationRetryKeys("admin-1", storage),
+    endpoint,
+    { ...body, roles: [...body.roles].reverse() },
+    () => assert.fail("reload created a new operation"),
+  );
+  assert.equal(calls[1].body, calls[0].body);
+  assert.equal(calls[1].headers["Idempotency-Key"], key);
+  assert.equal(entries.size, 0);
+});
+
+test("confirmation derives the primary role from the final venue assignments", () => {
+  const roles = new Map([
+    ["manager", { name: "General Manager", scope: "venue" }],
+    ["scheduler", { name: "Venue Scheduler", scope: "venue" }],
+  ]);
+  const scheduler = { roleId: "scheduler", venueId: "venue-a" };
+  const manager = { roleId: "manager", venueId: "venue-b" };
+  assert.equal(primaryRoleAssignment([scheduler], roles).name, "Venue Scheduler");
+  assert.equal(primaryRoleAssignment([scheduler, manager], roles).name, "General Manager");
+  assert.equal(primaryRoleAssignment([], roles), undefined);
 });
 
 test("venue role changes replace the assignment atomically and keep unrelated grants", async () => {

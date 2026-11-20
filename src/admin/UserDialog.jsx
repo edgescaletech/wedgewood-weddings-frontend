@@ -386,7 +386,7 @@ export default function UserDialog({
   const reviewHasGlobal = reviewGrants.some(
     (grant) => grant.roleId === adminRole?.id,
   );
-  const activationPrimary = primaryRoleAssignment(account?.roles ?? []);
+  const reviewPrimary = primaryRoleAssignment(reviewGrants, roles);
   const roleGroups = groupRoleAssignments(reviewGrants, roles, allVenues);
   const venueCount = new Set(
     reviewGrants.map(({ venueId }) => venueId).filter(Boolean),
@@ -630,9 +630,7 @@ export default function UserDialog({
                 <div>
                   <dt>Primary role</dt>
                   <dd>
-                    {activationPrimary?.name ??
-                      roles.get(activationPrimary?.roleId)?.name ??
-                      "None assigned"}
+                    {reviewPrimary?.name ?? "None assigned"}
                   </dd>
                 </div>
                 <div>
@@ -670,7 +668,7 @@ export default function UserDialog({
             <dl className="ux-facts">
               <div>
                 <dt>Primary role</dt>
-                <dd>{roles.get(primary)?.name ?? "None assigned"}</dd>
+                <dd>{reviewPrimary?.name ?? "None assigned"}</dd>
               </div>
               <div>
                 <dt>Venue access</dt>
@@ -765,7 +763,7 @@ export default function UserDialog({
                 <strong>All venues</strong>
               </p>
             )}
-            {canEditVenues && (!inviting || (primary && !hasGlobal)) && (
+            {canEditVenues && !hasGlobal && (!inviting || primary) && (
               <VenuePicker
                 loadVenuePage={loadVenuePage}
                 venues={allVenues}

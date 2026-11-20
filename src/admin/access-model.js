@@ -22,11 +22,21 @@ export function hasAllVenues(user) {
 }
 
 // The API stores assignments per scope, so derive the displayed primary role.
-export function primaryRoleAssignment(assignments) {
+export function primaryRoleAssignment(assignments, roles) {
+  const namedAssignments = roles
+    ? assignments.map((assignment) => {
+        const role = roles.get(assignment.roleId);
+        return {
+          ...assignment,
+          name: role?.name ?? assignment.name,
+          scope: role?.scope ?? assignment.scope,
+        };
+      })
+    : assignments;
   return (
-    assignments.find(({ scope }) => scope === "global") ??
-    assignments.find(({ name }) => name === "General Manager") ??
-    assignments[0]
+    namedAssignments.find(({ scope }) => scope === "global") ??
+    namedAssignments.find(({ name }) => name === "General Manager") ??
+    namedAssignments[0]
   );
 }
 

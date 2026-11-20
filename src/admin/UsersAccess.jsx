@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../config.js";
 import {
   createAdminApi,
   createVenuePageLoader,
+  invitationRetryKeys,
   loadUserPage,
   prefetchMoreVenuePages,
 } from "./api.js";
@@ -89,7 +90,7 @@ export default function UsersAccess() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState("");
   const [auditRevision, setAuditRevision] = useState(0);
-  const [invitationKeys] = useState(() => new Map());
+  const invitationKeys = useMemo(() => invitationRetryKeys(user?.id), [user?.id]);
 
   useEffect(() => {
     if (!toast) return undefined;

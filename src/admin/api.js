@@ -144,7 +144,38 @@ export function loadUserPage(api, page, size, filters, signal) {
   );
 }
 
-// Keep the same operation key across ambiguous failures and dialog reopens.
+export function invitationRetryKeys(userId, storage = () => window.sessionStorage) {
+  const memory = new Map();
+  const prefix = `wedgewood:admin-invitation:${userId}:`;
+  return {
+    get(operation) {
+      if (memory.has(operation)) return memory.get(operation);
+      try {
+        return storage().getItem(prefix + operation);
+      } catch {
+        return undefined;
+      }
+    },
+    set(operation, key) {
+      memory.set(operation, key);
+      try {
+        storage().setItem(prefix + operation, key);
+      } catch {
+        // Keep retries available in memory when browser storage is blocked.
+      }
+    },
+    delete(operation) {
+      memory.delete(operation);
+      try {
+        storage().removeItem(prefix + operation);
+      } catch {
+        // The in-memory entry has already been removed.
+      }
+    },
+  };
+}
+
+// Keep the same operation key across ambiguous failures and page reloads.
 // A successful resend or a corrected request gets a fresh key.
 export async function requestInvitation(
   api,
@@ -153,14 +184,33 @@ export async function requestInvitation(
   body,
   newKey = () => crypto.randomUUID(),
 ) {
-  const operation = JSON.stringify([endpoint, body]);
+  if (body?.roles) {
+    body = {
+      ...body,
+      roles: [...body.roles].sort((a, b) =>
+        (a.venueId ?? "").localeCompare(b.venueId ?? "") ||
+        a.roleId.localeCompare(b.roleId),
+      ),
+    };
+  }
+  // Persist the fingerprint and UUID without saving the invitation payload.
+  const payload = new TextEncoder().encode(JSON.stringify([endpoint, body]));
+  const hash = await crypto.subtle.digest("SHA-256", payload);
+  const operation = Array.from(new Uint8Array(hash), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
   const key = keys.get(operation) ?? newKey();
   keys.set(operation, key);
   try {
     await api.request(endpoint, { method: "POST", body, key });
     keys.delete(operation);
   } catch (error) {
-    if (error.status === 400) keys.delete(operation);
+    if (
+      error.status === 400 ||
+      (error.status === 409 && error.message === "invitation can no longer be completed")
+    ) {
+      keys.delete(operation);
+    }
     throw error;
   }
 }
