@@ -17,7 +17,6 @@ export default function Login() {
   const [code, setCode] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
@@ -66,7 +65,6 @@ export default function Login() {
 
     const access = await response.json();
     if (hasAdminDashboardAccess(access)) {
-      setIsAdmin(true);
       setStatus("signed-in");
       return;
     }
@@ -213,20 +211,6 @@ export default function Login() {
       setFormError("Unable to reach the server. Please try again.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function signOut() {
-    setStatus("signing-out");
-    setIsAdmin(false);
-    try {
-      const response = await fetch(`${apiBase}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      setStatus(response.ok ? "signed-out" : "logout-error");
-    } catch {
-      setStatus("logout-error");
     }
   }
 
@@ -432,29 +416,13 @@ export default function Login() {
                   Contact your administrator to request access to the scheduling
                   workspace.
                 </p>
-                <button className="login-secondary" onClick={signOut}>
-                  Sign out
-                </button>
               </div>
             ) : status === "signed-in" ? (
               <div className="login-message" role="status">
                 <strong>You’re signed in.</strong>
-                <p>Choose where you want to continue.</p>
                 <a className="login-button" href="/staffing/">
                   Continue to work dashboard <span aria-hidden="true">→</span>
                 </a>
-                {isAdmin && (
-                  <a
-                    className="login-button login-button-secondary"
-                    href="/admin/users"
-                  >
-                    Continue to Admin dashboard{" "}
-                    <span aria-hidden="true">→</span>
-                  </a>
-                )}
-                <button className="login-secondary" onClick={signOut}>
-                  Sign out
-                </button>
               </div>
             ) : (
               <>
@@ -465,11 +433,6 @@ export default function Login() {
                   <p className="login-alert" role="alert">
                     We couldn’t check your account. You can still try signing
                     in.
-                  </p>
-                )}
-                {status === "logout-error" && (
-                  <p className="login-alert" role="alert">
-                    We couldn’t sign you out. Please try again.
                   </p>
                 )}
                 {formError && (
@@ -498,9 +461,7 @@ export default function Login() {
                   <button
                     className="login-button"
                     type="submit"
-                    disabled={
-                      status === "signing-in" || status === "signing-out"
-                    }
+                    disabled={status === "signing-in"}
                   >
                     {status === "signing-in" ? "Signing in…" : "Sign in"}{" "}
                     <span aria-hidden="true">→</span>
@@ -517,11 +478,6 @@ export default function Login() {
                 >
                   Forgot password?
                 </button>
-                {status === "logout-error" && (
-                  <button className="login-secondary" onClick={signOut}>
-                    Try signing out again
-                  </button>
-                )}
               </>
             )}
           </div>
