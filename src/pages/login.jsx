@@ -435,7 +435,7 @@ export default function Login() {
               <>
                 <p className="login-explanation">
                   {inviteComplete
-                    ? "Your password has been created successfully. Sign in to continue once your administrator activates your account."
+                    ? "Your password has been created successfully. Sign in to continue."
                     : "Use your Wedgewood account to securely access your workspace."}
                 </p>
                 {status === "unavailable" && (

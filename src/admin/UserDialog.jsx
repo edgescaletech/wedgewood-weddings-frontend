@@ -92,7 +92,7 @@ function PublishingImpact({ before, after, venues, inviting }) {
   }
 
   const gainLabel = inviting
-    ? "Can publish after activation at"
+    ? "Can publish after setup at"
     : "Gains publishing at";
 
   return (
