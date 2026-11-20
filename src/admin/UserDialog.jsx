@@ -31,10 +31,6 @@ const accountActions = {
     "Deactivate user",
     "This ends the user’s current sessions. Their role assignments are retained.",
   ],
-  archive: [
-    "Archive user",
-    "This ends the user’s sessions and prevents future activation.",
-  ],
   resend: [
     "Resend invitation",
     "WorkOS will resend the pending invitation or replace it if it expired.",
@@ -362,7 +358,7 @@ export default function UserDialog({
   const path = account ? userPath(account.id) : usersPath;
   const status = account && accountStatus(account);
   const deactivated = status === "Deactivated";
-  const editable = inviting || (account.id !== ownId && !account.archivedAt);
+  const editable = inviting || (account.id !== ownId);
   const canReactivate = deactivated && editable && canManage;
   const canEditName = editable && !deactivated && canManage;
   const canEditRoles = editable && !deactivated && canAssign;
@@ -513,15 +509,12 @@ export default function UserDialog({
             invitationKeys,
             `${path}/invitation/resend`,
           );
-        else if (action === "archive")
-          await api.request(path, { method: "DELETE" });
         else await api.request(`${path}/${action}`, { method: "POST" });
         const userName = account.displayName || account.email;
         onChange(
           {
             activate: `${userName}’s account is now active.`,
             deactivate: `Deactivated ${userName}’s account.`,
-            archive: `Archived ${userName}’s account.`,
             resend: `Resent the invitation to ${userName}.`,
           }[action],
         );
@@ -542,7 +535,8 @@ export default function UserDialog({
           difference.added.length ||
           difference.removed.length ||
           latest.displayName !== account.displayName ||
-          latest.archivedAt !== account.archivedAt
+          latest.isActive !== account.isActive ||
+          latest.workosId !== account.workosId
         ) {
           setAccount(latest);
           setDraft(latest.roles);
@@ -863,17 +857,6 @@ export default function UserDialog({
                     Resend invitation
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="quiet danger"
-                  onClick={() => {
-                    setError("");
-                    setAction("archive");
-                    setStage("action");
-                  }}
-                >
-                  Archive user
-                </button>
               </>
             )}
           </div>
@@ -927,11 +910,7 @@ export default function UserDialog({
           ) : (
             <button
               type="button"
-              className={
-                stage === "action" && action === "archive"
-                  ? "primary danger"
-                  : "primary"
-              }
+              className="primary"
               disabled={busy}
               onClick={submit}
             >

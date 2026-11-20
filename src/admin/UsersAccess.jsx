@@ -25,7 +25,6 @@ const auditPageSize = 50;
 
 const auditActionLabels = {
   "user.activate": "User activated",
-  "user.archive": "User archived",
   "user.deactivate": "User deactivated",
   "user.invite": "Invitation sent",
   "user.invite.resend": "Invitation resent",
@@ -315,7 +314,7 @@ export default function UsersAccess() {
                   }
                 >
                   <option value="">All statuses</option>
-                  {["Active", "Invited", "Deactivated", "Archived"].map(
+                  {["Active", "Invited", "Deactivated"].map(
                     (status) => (
                       <option key={status}>{status}</option>
                     ),
@@ -405,7 +404,7 @@ export default function UsersAccess() {
                     const deactivated = status === "Deactivated";
                     const canOpenAccount = deactivated
                       ? canManage
-                      : status !== "Archived" && (canManage || canAssign);
+                      : canManage || canAssign;
                     return (
                       <tr key={account.id}>
                         <td>

@@ -9,7 +9,6 @@ export const emptyFilters = {
 };
 
 export function accountStatus(user) {
-  if (user.archivedAt) return "Archived";
   if (user.isActive) return "Active";
   if (!user.workosId) return "Invited";
   return "Deactivated";
