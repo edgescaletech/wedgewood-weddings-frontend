@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { API_BASE_URL } from '../config.js';
-import AdminHeader from './AdminHeader.jsx';
-import styles from './labor-targets.css?inline';
-
-export { styles };
+import './labor-targets.css';
 
 const apiBase = API_BASE_URL || '';
 const LABOR_TARGETS_URL = `${apiBase}/api/admin/labor-goals/upload`;
@@ -323,29 +320,20 @@ export default function AdminGoalsPage() {
 
 
   return (
-    <div className="admin-goals-body">
-      <div className="users-access">
-        <AdminHeader page="laborTargets" />
-        {toast && (
-          <div className="ux-toast" role={toast.error ? "alert" : "status"}>{toast.message}</div>
-        )}
-      </div>
-
-      <main className="admin-container">
-        {/* Title & Action Row */}
-        <div className="admin-page-title-row">
-          <div>
-            <h1 className="admin-page-title">Labor efficiency targets</h1>
-            <p className="admin-page-subtitle">Guests per labor hour, by venue.</p>
-          </div>
-          <button
-            type="button"
-            className="btn-upload-targets-toggle"
-            onClick={() => setShowUpload(!showUpload)}
-          >
-            {showUpload ? 'Close upload' : 'Upload targets'}
-          </button>
+    <main id="labor-targets-workspace" className="ux-page labor-targets">
+      <header className="rm-heading">
+        <div>
+          <h1>Labor efficiency targets</h1>
+          <p className="admin-page-subtitle">Guests per labor hour, by venue.</p>
         </div>
+        <button type="button" className={showUpload ? undefined : "primary"}
+          aria-expanded={showUpload} onClick={() => setShowUpload(!showUpload)}>
+          {showUpload ? "Close upload" : "Upload targets"}
+        </button>
+      </header>
+      {toast && (
+        <div className="ux-toast" role={toast.error ? "alert" : "status"}>{toast.message}</div>
+      )}
 
         {/* Collapsible Upload targets Card */}
         {showUpload && (
@@ -714,8 +702,7 @@ export default function AdminGoalsPage() {
             })}
           </div>
         </section>
-      </main>
-    </div>
+    </main>
   );
 }
 

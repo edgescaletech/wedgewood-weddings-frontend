@@ -6,7 +6,6 @@ import {
   createVenuePageLoader,
   loadUserPage,
   prefetchMoreVenuePages,
-  userPath,
 } from "./api.js";
 import {
   accountStatus,
@@ -18,7 +17,6 @@ import {
 } from "./access-model.js";
 import Pager from "./Pager.jsx";
 import UserDialog from "./UserDialog.jsx";
-import AdminHeader from "./AdminHeader.jsx";
 
 const api = createAdminApi(API_BASE_URL);
 const pageSize = 25;
@@ -134,12 +132,11 @@ export default function UsersAccess() {
     const { signal } = controller;
     setDirectoryError("");
     Promise.all([
-      api.request(userPath(user.id), { signal }),
       api.request("/api/me/venues", { signal }),
       canManageVenues ? api.list("/api/admin/venues", signal) : [],
       canReadRoles ? api.request("/api/admin/roles", { signal }) : [],
     ])
-      .then(([identity, myVenues, adminVenues, roles]) => {
+      .then(([myVenues, adminVenues, roles]) => {
         if (signal.aborted) return;
         const allVenues = new Map(
           myVenues.map((venue) => [venue.id, { ...venue, is_active: true }]),
@@ -149,7 +146,6 @@ export default function UsersAccess() {
           a.name.localeCompare(b.name),
         );
         setDirectory({
-          displayName: identity.displayName,
           venues,
           roles: roles.filter((role) => predefinedRoles.includes(role.name)),
         });
@@ -249,8 +245,7 @@ export default function UsersAccess() {
   }
 
   return (
-    <div className="users-access">
-      <AdminHeader page="users" displayName={directory?.displayName} />
+    <>
       <main id="workspace" className="rm-page ux-page">
         <header className="rm-heading">
           <h1>Users &amp; access</h1>
@@ -559,6 +554,6 @@ export default function UsersAccess() {
           {toast.message}
         </div>
       )}
-    </div>
+    </>
   );
 }

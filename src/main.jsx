@@ -4,24 +4,22 @@ import { API_BASE_URL as apiBase } from "./config.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import Staffing, { styles as staffingStyles } from "./pages/staffing.jsx";
 import Goals, { styles as goalsStyles } from "./pages/goals.jsx";
-import LaborTargets, { styles as laborTargetsStyles } from "./admin/LaborTargets.jsx";
-import UsersAccess from "./admin/UsersAccess.jsx";
+import AdminDashboard from "./admin/AdminDashboard.jsx";
+import { adminPageForPath } from "./admin/navigation.js";
 import Login from "./pages/login.jsx";
 import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "./context/identity-permissions.js";
 import "../style.css";
 
 const pages = {
-  users: [UsersAccess, ""],
+  admin: [AdminDashboard, ""],
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
-  laborTargets: [LaborTargets, laborTargetsStyles],
   login: [Login, ""],
 };
 
 function getPage() {
   const path = window.location.pathname;
-  if (["/admin", "/admin/", "/admin/users", "/admin/users/", "/admin/users.html"].includes(path)) return "users";
-  if (["/admin/labor-targets", "/admin/labor-targets/", "/admin/labor-targets.html"].includes(path)) return "laborTargets";
+  if (adminPageForPath(path)) return "admin";
   if (
     [
       "/login",
@@ -56,14 +54,15 @@ function getPage() {
 }
 
 const page = getPage();
-const isAdminPage = page === "users" || page === "laborTargets";
+const initialAdminPage = adminPageForPath(window.location.pathname);
+const isAdminPage = page === "admin";
 
 // Check the server session before rendering application components.
 function ProtectedPage() {
   const [status, setStatus] = useState("checking");
   const [attempt, setAttempt] = useState(0);
   const { access, accessError, loading: accessLoading } = useAuth();
-  const canOpenAdminPage = page === "laborTargets"
+  const canOpenAdminPage = initialAdminPage === "laborTargets"
     ? hasLaborTargetsAccess(access)
     : hasAdminDashboardAccess(access);
 
@@ -188,7 +187,7 @@ function Page() {
 
   return (
     <div className={`react-page react-page-${page}`}>
-      <Content />
+      {isAdminPage ? <AdminDashboard initialPage={initialAdminPage} /> : <Content />}
     </div>
   );
 }

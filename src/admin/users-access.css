@@ -14,7 +14,7 @@
 }
 
 /* Users & Access uses the prototype's paper surface, greens, and table density. */
-.react-page-users {
+.react-page-admin {
   min-height: 100vh;
   background: #f6f7f2;
   color: #203e35;

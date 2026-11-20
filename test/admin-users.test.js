@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { adminPageForPath } from "../src/admin/navigation.js";
 import {
   createAdminApi,
   createVenuePageLoader,
@@ -17,6 +18,16 @@ import {
   rolePermissionSummary,
   saveUser,
 } from "../src/admin/access-model.js";
+
+test("direct links and history paths resolve to the same Admin tabs", () => {
+  for (const path of ["/admin", "/admin/", "/admin/users", "/admin/users.html"]) {
+    assert.equal(adminPageForPath(path), "users");
+  }
+  for (const path of ["/admin/labor-targets", "/admin/labor-targets/", "/admin/labor-targets.html"]) {
+    assert.equal(adminPageForPath(path), "laborTargets");
+  }
+  assert.equal(adminPageForPath("/staffing"), null);
+});
 
 test("invitation review groups venues under each role and lists capabilities", () => {
   const groups = groupRoleAssignments(

@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "../context/identity-permissions.js";
 import "./users-access.css";
 
-export default function AdminHeader({ page, displayName }) {
+export default function AdminHeader({ page, displayName, onNavigate }) {
   const { user, access } = useAuth();
   const globalRoles = access?.global?.roles ?? [];
   const identitySubtitle = globalRoles.includes("Admin")
@@ -27,6 +27,7 @@ export default function AdminHeader({ page, displayName }) {
             className={id === page ? "selected" : undefined}
             aria-current={id === page ? "page" : undefined}
             href={href}
+            onClick={(event) => onNavigate(event, id, href)}
           >
             {label}
           </a>
