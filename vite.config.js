@@ -4,12 +4,20 @@ import { fileURLToPath } from 'node:url';
 
 const projectDir = dirname(fileURLToPath(import.meta.url));
 
-function serveInvitePage(server) {
+const pageEntries = {
+  '/invite': '/invite/index.html',
+  '/admin': '/admin/users.html',
+  '/admin/users': '/admin/users.html',
+  '/admin/labor-targets': '/admin/labor-targets.html',
+};
+
+function servePageEntries(server) {
   server.middlewares.use((request, _response, next) => {
-    const path = request.url?.split('?', 1)[0];
-    if (path === '/invite' || path === '/invite/') {
-      // Serve the dedicated entry before Vite's fallback to the protected app.
-      request.url = '/invite/index.html' + request.url.slice(path.length);
+    const path = request.url?.split('?', 1)[0] ?? '';
+    const route = path.replace(/\/$/, '');
+    const entry = Object.hasOwn(pageEntries, route) ? pageEntries[route] : undefined;
+    if (entry) {
+      request.url = entry + request.url.slice(path.length);
     }
     next();
   });
@@ -17,10 +25,23 @@ function serveInvitePage(server) {
 
 export default defineConfig({
   plugins: [{
-    name: 'invite-page',
-    configureServer: serveInvitePage,
-    configurePreviewServer: serveInvitePage,
+    name: 'page-entries',
+    configureServer: servePageEntries,
+    configurePreviewServer: servePageEntries,
   }],
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     rollupOptions: {
       input: {
@@ -33,6 +54,7 @@ export default defineConfig({
         staffingRoute: resolve(projectDir, 'staffing/index.html'),
         goals: resolve(projectDir, 'goals.html'),
         goalsRoute: resolve(projectDir, 'goals/index.html'),
+        laborTargets: resolve(projectDir, 'admin/labor-targets.html'),
       },
     },
   },

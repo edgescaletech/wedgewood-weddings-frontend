@@ -30,6 +30,8 @@ An Admin sends your WorkOS invitation. Set the application's **User invitation U
 
 The events, staffing, and goals pages check `/auth/me` before loading and redirect signed-out or inactive users to login. The backend independently requires an active session for event API requests. Login and password recovery remain public. The UI enables permission-controlled actions only when the identity response supplies a role and the relevant permission.
 
+`/admin` opens Users & access. The Admin navigation includes **Labor efficiency targets** at `/admin/labor-targets` for users with the global `labor_goals.manage` permission. That page imports labor targets and accounting periods using CSV. The venue cards display illustrative data, as labeled on the page.
+
 ## Build
 
 ```sh

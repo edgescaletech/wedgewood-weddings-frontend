@@ -4,21 +4,24 @@ import { API_BASE_URL as apiBase } from "./config.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import Staffing, { styles as staffingStyles } from "./pages/staffing.jsx";
 import Goals, { styles as goalsStyles } from "./pages/goals.jsx";
+import LaborTargets, { styles as laborTargetsStyles } from "./admin/LaborTargets.jsx";
 import UsersAccess from "./admin/UsersAccess.jsx";
 import Login from "./pages/login.jsx";
-import { hasAdminDashboardAccess } from "./context/identity-permissions.js";
+import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "./context/identity-permissions.js";
 import "../style.css";
 
 const pages = {
   users: [UsersAccess, ""],
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
+  laborTargets: [LaborTargets, laborTargetsStyles],
   login: [Login, ""],
 };
 
 function getPage() {
   const path = window.location.pathname;
-  if (["/admin/users", "/admin/users/", "/admin/users.html"].includes(path)) return "users";
+  if (["/admin", "/admin/", "/admin/users", "/admin/users/", "/admin/users.html"].includes(path)) return "users";
+  if (["/admin/labor-targets", "/admin/labor-targets/", "/admin/labor-targets.html"].includes(path)) return "laborTargets";
   if (
     [
       "/login",
@@ -53,13 +56,16 @@ function getPage() {
 }
 
 const page = getPage();
+const isAdminPage = page === "users" || page === "laborTargets";
 
 // Check the server session before rendering application components.
 function ProtectedPage() {
   const [status, setStatus] = useState("checking");
   const [attempt, setAttempt] = useState(0);
   const { access, accessError, loading: accessLoading } = useAuth();
-  const isAdmin = hasAdminDashboardAccess(access);
+  const canOpenAdminPage = page === "laborTargets"
+    ? hasLaborTargetsAccess(access)
+    : hasAdminDashboardAccess(access);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,17 +93,17 @@ function ProtectedPage() {
 
   useEffect(() => {
     if (
-      page === "users" &&
+      isAdminPage &&
       status === "authenticated" &&
       !accessLoading &&
       !accessError &&
-      !isAdmin
+      !canOpenAdminPage
     ) {
       window.location.replace("/staffing/");
     }
-  }, [accessError, accessLoading, isAdmin, status]);
+  }, [accessError, accessLoading, canOpenAdminPage, status]);
 
-  if (status === "authenticated" && page === "users") {
+  if (status === "authenticated" && isAdminPage) {
     if (accessLoading) {
       return (
         <main role="status" style={{ padding: "24px", textAlign: "center" }}>
@@ -113,7 +119,7 @@ function ProtectedPage() {
         </main>
       );
     }
-    if (!isAdmin) {
+    if (!canOpenAdminPage) {
       return (
         <main role="status" style={{ padding: "24px", textAlign: "center" }}>
           Returning to your work dashboard…

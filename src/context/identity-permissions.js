@@ -16,3 +16,7 @@ export function hasAdminDashboardAccess(access) {
     access?.global?.permissions?.includes("users.view") === true
   );
 }
+
+export function hasLaborTargetsAccess(access) {
+  return access?.global?.permissions?.includes("labor_goals.manage") === true;
+}

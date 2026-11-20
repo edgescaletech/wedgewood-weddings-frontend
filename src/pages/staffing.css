@@ -1808,4 +1808,363 @@
       white-space: nowrap;
     }
 
+    /* Event Details Panel & 4 Summary Cards (Prototype match) */
+    .event-details-panel {
+      margin-bottom: 20px;
+    }
+
+    .event-summary-cards-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .event-summary-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 90px;
+    }
+
+    .card-top-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .card-icon {
+      font-size: 13px;
+    }
+
+    .card-large-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+      margin-top: 4px;
+    }
+
+    .card-sub-value {
+      font-size: 11.5px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* Setup & Service Collapsible Accordion */
+    .setup-accordion-wrapper {
+      border: 1px solid #93c5fd;
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .setup-accordion-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 16px;
+      background: #eff6ff;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .setup-toggle-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #1e40af;
+    }
+
+    .setup-toggle-sub {
+      font-size: 11px;
+      color: #60a5fa;
+      margin-left: 8px;
+      font-style: italic;
+    }
+
+    .setup-accordion-body {
+      padding: 16px;
+      background: #ffffff;
+    }
+
+    .setup-cols-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    .setup-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .setup-col-heading {
+      font-size: 12px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .setup-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      padding: 2px 0;
+      gap: 12px;
+    }
+
+    .setup-item-label {
+      color: #475569;
+    }
+
+    .setup-item-val {
+      font-weight: 700;
+      color: #0f172a;
+      text-align: right;
+    }
+
+    .badge-status-yes {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #15803d;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .badge-status-no {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #64748b;
+      font-weight: 500;
+      font-size: 11px;
+    }
+
+    .gm-note-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .gm-note-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      white-space: nowrap;
+      margin-top: 6px;
+    }
+
+    .gm-working-textarea {
+      flex: 1;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      background: #fafafa;
+    }
+
+    .gm-working-textarea:focus {
+      border-color: #1e3a2b;
+      background: #ffffff;
+    }
+
+    /* Sub Navigation Tabs */
+    .sub-nav-bar {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 24px;
+      display: flex;
+      gap: 24px;
+    }
+
+    .sub-nav-tab {
+      padding: 12px 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: none;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .sub-nav-tab.active {
+      color: #166534;
+      font-weight: 800;
+      border-bottom-color: #166534;
+    }
+
+    .btn-header-back-schedule {
+      border: none;
+      background: transparent;
+      color: #166534;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 4px 8px;
+      text-decoration: underline;
+      margin-left: 8px;
+    }
+
+    .header-center-spacer {
+      flex: 1;
+    }
+
+    /* BEO PDF Dedicated Page View */
+    .beo-page-container {
+      max-width: 1200px;
+      margin: 24px auto 48px;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    .beo-view-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 28px 36px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      width: 100%;
+    }
+
+    .beo-top-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .beo-main-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .beo-actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .beo-action-buttons-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-back-schedule {
+      border: none;
+      background: transparent;
+      color: #166534;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 6px 10px;
+      text-decoration: underline;
+    }
+
+    .btn-open-pdf,
+    .btn-download-pdf {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #1e293b;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-open-pdf:hover,
+    .btn-download-pdf:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .beo-sample-subtitle {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.04em;
+    }
+
+    .beo-event-venue-heading {
+      margin-bottom: 24px;
+    }
+
+    .beo-event-venue-heading h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 4px 0;
+    }
+
+    .beo-event-meta-line {
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .beo-specs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px 32px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 20px;
+    }
+
+    .beo-spec-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .beo-spec-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .beo-spec-value {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .beo-demo-footer-note {
+      font-size: 12px;
+      color: #64748b;
+      font-style: italic;
+    }
+
 

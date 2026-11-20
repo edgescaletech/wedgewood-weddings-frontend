@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   hasAdminDashboardAccess,
+  hasLaborTargetsAccess,
   resolveIdentityPermissions,
 } from "../src/context/identity-permissions.js";
 
@@ -99,4 +100,15 @@ test("Date Helpers - getMondayFor correctly snaps dates to Monday", () => {
 
 test("Date Helpers - formatWeekRange displays start and end correctly", () => {
   assert.equal(formatWeekRange("2026-11-16"), "Nov 16 – Nov 22, 2026");
+});
+
+test("the Labor targets Admin tab requires the global labor management grant", () => {
+  assert.equal(hasLaborTargetsAccess(null), false);
+  assert.equal(hasLaborTargetsAccess({
+    global: { permissions: ["users.view"] },
+    venues: { "venue-1": { permissions: ["labor_goals.manage"] } },
+  }), false);
+  assert.equal(hasLaborTargetsAccess({
+    global: { permissions: ["labor_goals.manage"] },
+  }), true);
 });

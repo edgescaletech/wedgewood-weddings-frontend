@@ -133,18 +133,24 @@
 }
 .users-access .rm-shellbar nav {
   flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
-.users-access .rm-shellbar .selected {
+.users-access .rm-shellbar nav a {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
   padding: 10px 13px;
   border-radius: 5px;
-  background: #edf3ee;
   color: var(--admin-green);
   text-decoration: none;
   font-weight: 600;
   line-height: 1.4;
+}
+.users-access .rm-shellbar nav a:hover,
+.users-access .rm-shellbar nav .selected {
+  background: #edf3ee;
 }
 .users-access .rm-identity {
   margin-left: auto;

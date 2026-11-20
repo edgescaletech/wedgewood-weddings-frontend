@@ -18,7 +18,7 @@ import {
 } from "./access-model.js";
 import Pager from "./Pager.jsx";
 import UserDialog from "./UserDialog.jsx";
-import "./users-access.css";
+import AdminHeader from "./AdminHeader.jsx";
 
 const api = createAdminApi(API_BASE_URL);
 const pageSize = 25;
@@ -72,10 +72,6 @@ const auditDateFormat = new Intl.DateTimeFormat("en-US", {
 export default function UsersAccess() {
   const { user, access, accessError, loading } = useAuth();
   const globalPermissions = access?.global?.permissions ?? [];
-  const globalRoles = access?.global?.roles ?? [];
-  const identitySubtitle = globalRoles.includes("Admin")
-    ? ["Regional Manager", ...globalRoles].join(" · ")
-    : globalRoles.join(", ");
   const canView = globalPermissions.includes("users.view");
   const canManage = globalPermissions.includes("users.manage");
   const canReadRoles = globalPermissions.includes("roles.view");
@@ -254,29 +250,7 @@ export default function UsersAccess() {
 
   return (
     <div className="users-access">
-      <header className="rm-shellbar">
-        <a className="rm-brand" href="/staffing/">
-          <span className="rm-monogram" aria-hidden="true">
-            W
-          </span>
-          <span>
-            Wedgewood <b>Scheduling</b>
-          </span>
-        </a>
-        {canView && (
-          <nav aria-label="App navigation">
-            <a className="selected" aria-current="page" href="/admin/users">
-              Users &amp; access
-            </a>
-          </nav>
-        )}
-        {user && (
-          <div className="rm-identity">
-            <strong>{directory?.displayName || user.email}</strong>
-            {identitySubtitle && <span>{identitySubtitle}</span>}
-          </div>
-        )}
-      </header>
+      <AdminHeader page="users" displayName={directory?.displayName} />
       <main id="workspace" className="rm-page ux-page">
         <header className="rm-heading">
           <h1>Users &amp; access</h1>
