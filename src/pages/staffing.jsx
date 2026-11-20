@@ -204,7 +204,7 @@ export default function StaffingPage() {
           window.location.replace('/login');
           return;
         }
-        if (response.status === 403) {
+        if (response.status === 403 || response.status === 404) {
           // The refreshed list can still contain an event whose detail was denied.
           deniedEventIds.current.add(selectedEventId);
           setVenues(null);
@@ -214,7 +214,7 @@ export default function StaffingPage() {
           setEventDetails(null);
           setShowEventDetails(false);
           handleBackToSchedule();
-          setEventDetailError('You no longer have access to this event.');
+          setEventDetailError('This event is no longer available.');
           reloadAccess();
           return;
         }
