@@ -47,6 +47,7 @@ function InvitePage() {
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [canRetryLookup, setCanRetryLookup] = useState(false);
   const [resendAt, setResendAt] = useState(0);
+  const [resendSeconds, setResendSeconds] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,6 +62,7 @@ function InvitePage() {
         if (controller.signal.aborted) return;
         if (response.ok) {
           setProfile(result);
+          setResendCooldown(Number(result.retryAfterSeconds) || 0);
           setStep(result.step);
         } else {
           setError(result.error || "Unable to open this invitation.");
@@ -98,9 +100,18 @@ function InvitePage() {
 
   useEffect(() => {
     if (!resendAt) return;
-    const timer = window.setTimeout(() => setResendAt(0), Math.max(0, resendAt - Date.now()));
-    return () => window.clearTimeout(timer);
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+      setResendSeconds(remaining);
+      if (!remaining) setResendAt(0);
+    }, 250);
+    return () => window.clearInterval(timer);
   }, [resendAt]);
+
+  function setResendCooldown(seconds) {
+    setResendAt(seconds > 0 ? Date.now() + seconds * 1000 : 0);
+    setResendSeconds(seconds);
+  }
 
   async function submit(event) {
     event.preventDefault();
@@ -121,13 +132,16 @@ function InvitePage() {
     setError("");
     try {
       const response = await postAuth(path, body);
-      if (path === "/invite/send-code" && (response.ok || response.status === 429)) {
-        const delay = Number(response.headers.get("Retry-After")) || 60;
-        setResendAt(Date.now() + delay * 1000);
-        setCode("");
-        setStep("verify");
-        if (!response.ok) setError("Wait before requesting another code. If you received a code, enter it below.");
-        return;
+      if (path === "/invite/send-code") {
+        const delay = Number(response.headers.get("Retry-After"));
+        if (delay > 0 || response.ok || response.status === 429) {
+          setResendCooldown(delay > 0 ? delay : 30);
+        }
+        if (response.ok) {
+          setCode("");
+          setStep("verify");
+          return;
+        }
       }
       if (response.ok) {
         setPassword("");
@@ -261,12 +275,23 @@ function InvitePage() {
                     <label htmlFor="invite-code">Verification code</label>
                     <input id="invite-code" autoComplete="one-time-code" inputMode="numeric" required
                       pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/[^0-9]/g, ""))} />
-                    <button className="login-secondary" type="button" disabled={busy || resendAt > 0} onClick={() => advance("/invite/send-code", {})}>Resend code</button>
+                    <button
+                      className="login-secondary"
+                      type="button"
+                      disabled={busy || resendSeconds > 0}
+                      onClick={() => advance("/invite/send-code", {})}
+                    >
+                      {resendSeconds > 0 ? `Resend code in ${resendSeconds}s` : "Resend code"}
+                    </button>
                   </>
                 )}
                 {error && <p className="login-alert" role="alert">{error}</p>}
-                <button className="login-button" type="submit" disabled={busy}>
-                  {busy ? "Working…" : { details: "Continue", verify: "Verify email", password: "Set password" }[step]}
+                <button className="login-button" type="submit" disabled={busy || (step === "details" && resendSeconds > 0)}>
+                  {busy
+                    ? "Working…"
+                    : step === "details" && resendSeconds > 0
+                      ? `Try again in ${resendSeconds}s`
+                      : { details: "Continue", verify: "Verify email", password: "Set password" }[step]}
                   <span aria-hidden="true">→</span>
                 </button>
               </form>
