@@ -143,9 +143,12 @@ function VenuePicker({
 }) {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  const [region, setRegion] = useState("");
+  const [regions, setRegions] = useState([]);
   const [selectedOnly, setSelectedOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [venuePage, setVenuePage] = useState(null);
+  const [venuePending, setVenuePending] = useState(true);
   const [venueError, setVenueError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const selected = new Set(draft.map(({ venueId }) => venueId).filter(Boolean));
@@ -166,22 +169,27 @@ function VenuePicker({
   useEffect(() => {
     if (selectedOnly) return;
     let cancelled = false;
-    setVenuePage(null);
+    setVenuePending(true);
     setVenueError("");
-    loadVenuePage(page, search)
+    loadVenuePage(page, search, region)
       .then((result) => {
         if (cancelled) return;
+        setRegions(result.regions ?? []);
         onVenuesLoaded(result.items);
         const lastPage = Math.max(1, Math.ceil(result.total / size));
         if (page > lastPage) {
           setPage(lastPage);
           return;
         }
-        setVenuePage(result);
-        prefetchNextVenuePage(loadVenuePage, page, result.total, search);
+        setVenuePage({ ...result, page });
+        setVenuePending(false);
+        prefetchNextVenuePage(loadVenuePage, page, result.total, search, region);
       })
       .catch((error) => {
-        if (!cancelled) setVenueError(error.message);
+        if (!cancelled) {
+          setVenueError(error.message);
+          setVenuePending(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -190,6 +198,7 @@ function VenuePicker({
     loadVenuePage,
     onVenuesLoaded,
     search,
+    region,
     page,
     selectedOnly,
     attempt,
@@ -199,7 +208,7 @@ function VenuePicker({
   const total = selectedOnly ? selectedVenues.length : (venuePage?.total ?? 0);
   const currentPage = selectedOnly
     ? Math.min(page, Math.max(1, Math.ceil(total / size)))
-    : page;
+    : (venuePage?.page ?? page);
   // The selected-only view is a list of unsaved changes in this dialog.
   const results = selectedOnly
     ? selectedVenues.slice((currentPage - 1) * size, currentPage * size)
@@ -233,82 +242,103 @@ function VenuePicker({
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
+          <label>
+            Region
+            <select
+              value={region}
+              onChange={(event) => {
+                setRegion(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All regions</option>
+              {regions.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
         </div>
       )}
-      {results.map((venue) => {
-        const grants = draft.filter(({ venueId }) => venueId === venue.id);
-        const currentRole = grants[0] ?? null;
-        return (
-          <div className="ux-pick-row" key={venue.id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={grants.length > 0}
-                disabled={
-                  !grants.length && (!defaultRole || venue.is_active !== true)
-                }
-                onChange={(event) =>
-                  setDraft(
-                    event.target.checked
-                      ? [...draft, { roleId: defaultRole, venueId: venue.id }]
-                      : draft.filter(({ venueId }) => venueId !== venue.id),
-                  )
-                }
-              />
-              <span>
-                {venue.name}
-                {venue.is_active === false && <small>Suspended</small>}
-              </span>
-            </label>
-            {grants.length > 0 && (
-              <select
-                aria-label={`Role at ${venue.name}`}
-                value={currentRole?.roleId ?? ""}
-                disabled={venue.is_active !== true}
-                onChange={(event) =>
-                  setDraft([
-                    ...draft.filter(({ venueId }) => venueId !== venue.id),
-                    { roleId: event.target.value, venueId: venue.id },
-                  ])
-                }
-              >
-                {currentRole &&
-                  !scopedRoles.some(({ id }) => id === currentRole.roleId) && (
-                    <option value={currentRole.roleId}>
-                      {currentRole.name || "Assigned role"}
+      {!selectedOnly && !venuePage && !venueError && (
+        <p className="ux-empty" role="status">
+          Loading venues…
+        </p>
+      )}
+      <div
+        aria-busy={!selectedOnly && venuePending}
+        inert={!selectedOnly && (venuePending || Boolean(venueError))}
+      >
+        {results.map((venue) => {
+          const grants = draft.filter(({ venueId }) => venueId === venue.id);
+          const currentRole = grants[0] ?? null;
+          return (
+            <div className="ux-pick-row" key={venue.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={grants.length > 0}
+                  disabled={
+                    !grants.length && (!defaultRole || venue.is_active !== true)
+                  }
+                  onChange={(event) =>
+                    setDraft(
+                      event.target.checked
+                        ? [...draft, { roleId: defaultRole, venueId: venue.id }]
+                        : draft.filter(({ venueId }) => venueId !== venue.id),
+                    )
+                  }
+                />
+                <span>
+                  {venue.name}
+                  {venue.region && <small>{venue.region}</small>}
+                  {venue.is_active === false && <small>Suspended</small>}
+                </span>
+              </label>
+              {grants.length > 0 && (
+                <select
+                  aria-label={`Role at ${venue.name}`}
+                  value={currentRole?.roleId ?? ""}
+                  disabled={venue.is_active !== true}
+                  onChange={(event) =>
+                    setDraft([
+                      ...draft.filter(({ venueId }) => venueId !== venue.id),
+                      { roleId: event.target.value, venueId: venue.id },
+                    ])
+                  }
+                >
+                  {currentRole &&
+                    !scopedRoles.some(({ id }) => id === currentRole.roleId) && (
+                      <option value={currentRole.roleId}>
+                        {currentRole.name || "Assigned role"}
+                      </option>
+                    )}
+                  {scopedRoles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
                     </option>
-                  )}
-                {scopedRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        );
-      })}
-      {!selectedOnly && venueError ? (
+                  ))}
+                </select>
+              )}
+            </div>
+          );
+        })}
+        {!results.length && (selectedOnly || (venuePage && !venueError)) && (
+          <p className="ux-empty">No matching venues.</p>
+        )}
+        <Pager
+          count={total}
+          page={currentPage}
+          size={size}
+          onPage={setPage}
+          label="Venue choices"
+        />
+      </div>
+      {!selectedOnly && venueError && (
         <p className="ux-error" role="alert">
           {venueError}{" "}
           <button type="button" onClick={() => setAttempt(attempt + 1)}>
             Try again
           </button>
         </p>
-      ) : !selectedOnly && !venuePage ? (
-        <p className="ux-empty" role="status">
-          Loading venues…
-        </p>
-      ) : (
-        !results.length && <p className="ux-empty">No matching venues.</p>
       )}
-      <Pager
-        count={total}
-        page={currentPage}
-        size={size}
-        onPage={setPage}
-        label="Venue choices"
-      />
     </section>
   );
 }

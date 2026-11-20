@@ -84,9 +84,9 @@ export function createVenuePageLoader(api) {
   const pages = new Map();
   const maxCachedPages = 12;
 
-  return function loadVenuePage(page, search = "") {
+  return function loadVenuePage(page, search = "", region = "") {
     const query = search.trim();
-    const key = JSON.stringify([query, page]);
+    const key = JSON.stringify([query, region, page]);
     const cached = pages.get(key);
     if (cached) {
       pages.delete(key);
@@ -102,6 +102,7 @@ export function createVenuePageLoader(api) {
       {
         search: query,
         active: "true",
+        region,
       },
     ).catch((error) => {
       if (pages.get(key) === request) pages.delete(key);
@@ -113,9 +114,9 @@ export function createVenuePageLoader(api) {
   };
 }
 
-export function prefetchNextVenuePage(loadVenuePage, page, total, search) {
+export function prefetchNextVenuePage(loadVenuePage, page, total, search, region) {
   if (page * venuePageSize < total) {
-    return loadVenuePage(page + 1, search).catch(() => {});
+    return loadVenuePage(page + 1, search, region).catch(() => {});
   }
 }
 

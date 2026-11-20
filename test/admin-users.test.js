@@ -300,3 +300,23 @@ test("venue picker keeps preloading the next page for the current search", async
     ["30", "oak"],
   ]);
 });
+
+test("venue paging and preloading keep region filters in separate caches", async () => {
+  const requests = [];
+  const api = createAdminApi("", async (path) => {
+    const params = new URL(path, "http://localhost").searchParams;
+    requests.push([params.get("offset"), params.get("search"), params.get("region")]);
+    return Response.json({ items: [], total: 12, regions: ["Bay Area", "Southern California"] });
+  });
+  const loadVenuePage = createVenuePageLoader(api);
+  const { regions, total } = await loadVenuePage(1, "oak", "Bay Area");
+  await prefetchNextVenuePage(loadVenuePage, 1, total, "oak", "Bay Area");
+  await loadVenuePage(1, "oak", "Southern California");
+  await loadVenuePage(1, "oak", "Bay Area");
+  assert.deepEqual(regions, ["Bay Area", "Southern California"]);
+  assert.deepEqual(requests, [
+    ["0", "oak", "Bay Area"],
+    ["6", "oak", "Bay Area"],
+    ["0", "oak", "Southern California"],
+  ]);
+});
