@@ -284,9 +284,7 @@ export default function StaffingPage() {
         <a href={currentVenue?.id ? `/goals?venueId=${encodeURIComponent(currentVenue.id)}` : '/goals'} className="sub-nav-tab">
           Goals & budgets
         </a>
-        <a href="/admin-goals" className="sub-nav-tab" style={{ color: '#166534', fontWeight: 600 }}>
-          Admin: Labor targets
-        </a>
+
         <button
           type="button"
           className="sub-nav-tab"

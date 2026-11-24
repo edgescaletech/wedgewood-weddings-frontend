@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#1e4a38" />
+    <title>Accept invitation · Wedgewood Scheduling</title>
+    <script>
+      // Keep the token in memory and remove it before loading the app.
+      const inviteURL = new URL(window.location.href);
+      const inviteTokens = inviteURL.searchParams.getAll("invitation_token");
+      window.__wedgewoodInvite = inviteTokens.length === 1 ? inviteTokens[0] : "";
+      history.replaceState(history.state, "", inviteURL.pathname);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/invite/main.jsx"></script>
+  </body>
+</html>

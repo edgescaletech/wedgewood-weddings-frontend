@@ -1,6 +1,7 @@
 import { API_BASE_URL as apiBase } from "../config.js";
 import React, { useEffect, useState } from "react";
 import PasswordInput from "../components/PasswordInput.jsx";
+import { hasAdminDashboardAccess } from "../context/identity-permissions.js";
 import "./login.css";
 
 
@@ -11,7 +12,10 @@ const resetToken = window.__passwordResetToken || "";
 delete window.__passwordResetToken;
 
 export default function Login() {
-  const [status, setStatus] = useState(isResetPage ? "signed-out" : "checking");
+  const [inviteComplete] = useState(() =>
+    !isResetPage && window.location.hash === "#invite-complete",
+  );
+  const [status, setStatus] = useState(isResetPage || inviteComplete ? "signed-out" : "checking");
   const [view, setView] = useState(isResetPage ? "reset" : "login");
   const [code, setCode] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,6 +25,10 @@ export default function Login() {
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
+    if (inviteComplete) {
+      window.history.replaceState(window.history.state, "", "/login");
+      return undefined;
+    }
     if (isResetPage) return undefined;
     const controller = new AbortController();
     async function checkSession() {
@@ -29,9 +37,12 @@ export default function Login() {
           credentials: "include",
           signal: controller.signal,
         });
-        const nextStatus = response.ok
-          ? "signed-in"
-          : response.status === 403
+        if (response.ok) {
+          await routeSignedInUser(controller.signal);
+          return;
+        }
+        const nextStatus =
+          response.status === 403
             ? "inactive"
             : response.status === 401
               ? "signed-out"
@@ -46,7 +57,27 @@ export default function Login() {
     }
     checkSession();
     return () => controller.abort();
-  }, []);
+  }, [inviteComplete]);
+
+  async function routeSignedInUser(signal) {
+    const response = await fetch(`${apiBase}/auth/access`, {
+      credentials: "include",
+      cache: "no-store",
+      signal,
+    });
+    if (!response.ok) {
+      setStatus("unavailable");
+      return;
+    }
+
+    const access = await response.json();
+    if (hasAdminDashboardAccess(access)) {
+      setStatus("signed-in");
+      return;
+    }
+
+    window.location.replace("/staffing/");
+  }
 
   async function signIn(event) {
     event.preventDefault();
@@ -80,7 +111,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) window.location.assign("/");
+      if (account.ok) await routeSignedInUser();
       else if (account.status === 403) setStatus("inactive");
       else {
         setFormError(
@@ -122,7 +153,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) window.location.assign("/");
+      if (account.ok) await routeSignedInUser();
       else if (account.status === 403) {
         setView("login");
         setStatus("inactive");
@@ -187,19 +218,6 @@ export default function Login() {
       setFormError("Unable to reach the server. Please try again.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function signOut() {
-    setStatus("signing-out");
-    try {
-      const response = await fetch(`${apiBase}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      setStatus(response.ok ? "signed-out" : "logout-error");
-    } catch {
-      setStatus("logout-error");
     }
   }
 
@@ -405,35 +423,25 @@ export default function Login() {
                   Contact your administrator to request access to the scheduling
                   workspace.
                 </p>
-                <button className="login-secondary" onClick={signOut}>
-                  Sign out
-                </button>
               </div>
             ) : status === "signed-in" ? (
               <div className="login-message" role="status">
                 <strong>You’re signed in.</strong>
-                <p>Continue to your scheduling workspace.</p>
-                <a className="login-button" href="/">
-                  Continue to workspace <span aria-hidden="true">→</span>
+                <a className="login-button" href="/staffing/">
+                  Continue to work dashboard <span aria-hidden="true">→</span>
                 </a>
-                 <button className="login-secondary" onClick={signOut}>
-                  Sign out
-                </button>
               </div>
             ) : (
               <>
                 <p className="login-explanation">
-                  Use your Wedgewood account to securely access your workspace.
+                  {inviteComplete
+                    ? "Your password has been created successfully. Sign in to continue."
+                    : "Use your Wedgewood account to securely access your workspace."}
                 </p>
                 {status === "unavailable" && (
                   <p className="login-alert" role="alert">
                     We couldn’t check your account. You can still try signing
                     in.
-                  </p>
-                )}
-                {status === "logout-error" && (
-                  <p className="login-alert" role="alert">
-                    We couldn’t sign you out. Please try again.
                   </p>
                 )}
                 {formError && (
@@ -462,9 +470,7 @@ export default function Login() {
                   <button
                     className="login-button"
                     type="submit"
-                    disabled={
-                      status === "signing-in" || status === "signing-out"
-                    }
+                    disabled={status === "signing-in"}
                   >
                     {status === "signing-in" ? "Signing in…" : "Sign in"}{" "}
                     <span aria-hidden="true">→</span>
@@ -481,14 +487,6 @@ export default function Login() {
                 >
                   Forgot password?
                 </button>
-                <p className="login-help">
-                  Don’t have an account? <a href="/signup/">Create one</a>
-                </p>
-                {status === "logout-error" && (
-                  <button className="login-secondary" onClick={signOut}>
-                    Try signing out again
-                  </button>
-                )}
               </>
             )}
           </div>
