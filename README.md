@@ -134,3 +134,36 @@ Run `npm run test:e2e:report` to open the latest HTML report. Reports and local
 environment files are ignored by Git. Controlled tests keep screenshots and
 traces on failure. Real projects disable these artifacts and do not save browser
 authentication state.
+
+## Authorization browser tests
+
+Run Batch 2 against a frontend and Go backend that both include
+`feat/authorization`. Batch 2 uses real browser sessions and does not intercept
+authorization responses. It uses the same Admin and mixed-role accounts as
+Batch 1. Approval and publishing coverage checks grants and the prototype
+publish control. It does not submit or publish a schedule.
+
+Configure `E2E_AUTHZ_WEEK` as a Monday with existing events in all three venues.
+The defaults are Hofmann Ranch (General Manager), Tapestry House (Venue
+Scheduler), and Abbey Catering (no assignment). Override the three
+`E2E_AUTHZ_VENUE_*` names if necessary. The Admin venue directory resolves
+external IDs and an Admin event read provides the existing third-venue event ID.
+Use distinct event names so cross-venue leakage is observable. Missing events
+fail with a fixture prerequisite message. Labor coverage checks HTTP access for
+the summary and targets endpoints. It requires no labor-data fixtures and
+makes no assertions about calculations or response totals.
+
+```sh
+E2E_LIVE_AUTH=1 npm run test:e2e:local -- --grep AUTHZ
+E2E_LIVE_AUTH=1 npm run test:e2e:staging -- --grep AUTHZ
+E2E_LIVE_AUTH=1 npm run test:e2e:local -- --grep AUTHN
+```
+
+To exercise role revocation, enable `E2E_AUTHZ_MUTATIONS=1` only against isolated
+infrastructure with disposable test accounts. Staging also requires
+`E2E_STAGING_ISOLATED=1`. The live project uses one worker. Do not overlap
+revocation runs against the same fixture account. The test resets Venue A to
+General Manager, removes the assignment, and restores it in a `finally` block,
+verifying that the Venue B assignment remains unchanged. Role writes generate
+normal Admin audit entries. If cleanup fails or the run is interrupted, verify
+and restore Venue A's General Manager grant before another run.
