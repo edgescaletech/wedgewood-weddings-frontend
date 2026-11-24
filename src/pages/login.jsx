@@ -1,5 +1,10 @@
 import { API_BASE_URL as apiBase } from "../config.js";
 import React, { useEffect, useState } from "react";
+import { usePasswordStrength } from "../components/usePasswordStrength.js";
+import PasswordChecklist from "../components/PasswordChecklist.jsx";
+import { validatePasswords } from "../components/password-policy.js";
+import NewPasswordField from "../components/NewPasswordField.jsx";
+import { clearResetToken, resumeResetToken } from "./reset-token.js";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { hasAdminDashboardAccess } from "../context/identity-permissions.js";
 import "./login.css";
@@ -8,7 +13,9 @@ import "./login.css";
 
 // The reset entry page removes the token from the URL before other resources load.
 const isResetPage = window.location.pathname.startsWith("/reset-password");
-const resetToken = window.__passwordResetToken || "";
+let resetToken = isResetPage
+  ? resumeResetToken(window.__passwordResetToken || "", performance.getEntriesByType("navigation")[0]?.type === "reload")
+  : "";
 delete window.__passwordResetToken;
 
 export default function Login() {
@@ -22,6 +29,8 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const strength = usePasswordStrength(view === "reset" && Boolean(resetToken), password);
+  const canResetPassword = !validatePasswords(password, confirmPassword, strength);
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
@@ -194,8 +203,9 @@ export default function Login() {
   async function resetPassword(event) {
     event.preventDefault();
     setFormError("");
-    if (password !== confirmPassword) {
-      setFormError("Passwords do not match.");
+    const error = validatePasswords(password, confirmPassword, strength);
+    if (error) {
+      setFormError(error);
       return;
     }
     setBusy(true);
@@ -209,10 +219,18 @@ export default function Login() {
         setFormError(
           body.error || "Unable to reset your password. Please try again.",
         );
+        if (response.status === 410) {
+          clearResetToken();
+          resetToken = "";
+          setPassword("");
+          setConfirmPassword("");
+        }
         return;
       }
       setPassword("");
       setConfirmPassword("");
+      clearResetToken();
+      resetToken = "";
       setView("reset-complete");
     } catch {
       setFormError("Unable to reach the server. Please try again.");
@@ -222,7 +240,7 @@ export default function Login() {
   }
 
   return (
-    <main className="login-shell">
+    <main className={isResetPage ? "login-shell reset-password-shell" : "login-shell"}>
       <section className="login-main" aria-labelledby="login-title">
         <a
           className="login-brand"
@@ -238,22 +256,26 @@ export default function Login() {
           </span>
         </a>
         <div className="login-content">
-          <div className="login-eyebrow">
-            <span /> TEAM WORKSPACE
-          </div>
-          <h1 id="login-title">
-            A little more room
-            <br />
-            <em>to make it special.</em>
-          </h1>
-          <p className="login-intro">
-            Your week, your team, and every detail in one place. Sign in to get
-            started.
-          </p>
+          {!isResetPage && (
+            <>
+              <div className="login-eyebrow">
+                <span /> TEAM WORKSPACE
+              </div>
+              <h1 id="login-title">
+                A little more room
+                <br />
+                <em>to make it special.</em>
+              </h1>
+              <p className="login-intro">
+                Your week, your team, and every detail in one place. Sign in to get
+                started.
+              </p>
+            </>
+          )}
           <div className="login-card">
             <div className="login-card-heading">
               <div>
-                <h2>
+                <h2 id={isResetPage ? "login-title" : undefined}>
                   {view === "verify"
                     ? "Verify your email"
                     : view === "forgot" || view === "reset-sent"
@@ -364,33 +386,37 @@ export default function Login() {
             ) : view === "reset" ? (
               resetToken ? (
                 <form className="login-form" onSubmit={resetPassword}>
-                  <p className="login-explanation">
-                    Choose a new password for your account.
-                  </p>
                   {formError && (
                     <p className="login-alert" role="alert">
                       {formError}
                     </p>
                   )}
-                  <label htmlFor="new-password">New password</label>
-                  <PasswordInput
+                  <NewPasswordField
                     id="new-password"
-                    autoComplete="new-password"
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    describedBy="reset-password-help"
+                    password={password}
+                    busy={busy}
+                    onChange={setPassword}
+                    onGenerate={(generated) => {
+                      setPassword(generated);
+                      setConfirmPassword(generated);
+                      setFormError("");
+                    }}
                   />
                   <label htmlFor="confirm-password">Confirm new password</label>
                   <PasswordInput
                     id="confirm-password"
                     autoComplete="new-password"
+                    aria-describedby="reset-password-help"
                     required
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
                   />
+                  <PasswordChecklist id="reset-password-help" password={password} confirmation={confirmPassword} strength={strength} />
                   <button
                     className="login-button"
-                    disabled={busy}
+                    disabled={busy || !canResetPassword}
+                    aria-describedby="reset-password-help"
                     type="submit"
                   >
                     {busy ? "Saving…" : "Reset password"}{" "}
@@ -399,8 +425,13 @@ export default function Login() {
                 </form>
               ) : (
                 <div className="login-message" role="alert">
-                  <strong>This reset link is missing its token.</strong>
-                  <p>Request a new password reset link and try again.</p>
+                  <strong>{formError || "Open the password reset link from your email."}</strong>
+                  <button className="login-button" type="button" onClick={() => {
+                    setFormError("");
+                    setView("forgot");
+                  }}>
+                    Request a new reset link
+                  </button>
                   <a className="login-secondary" href="/login/">
                     Back to sign in
                   </a>

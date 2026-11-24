@@ -1,6 +1,6 @@
-import { validatePasswords } from "./password.js";
+import { validatePasswords } from "../components/password-policy.js";
 
-export function invitationAction(step, { invitationId, code, password, confirmation, minimumLength }) {
+export function invitationAction(step, { invitationId, code, password, confirmation, strength, minimumLength }) {
   switch (step) {
     case "details":
       return { path: "/invite/send-code", body: {} };
@@ -8,7 +8,7 @@ export function invitationAction(step, { invitationId, code, password, confirmat
       if (!/^[0-9]{6}$/.test(code)) return { error: "Enter the six-digit verification code." };
       return { path: "/invite/verify", body: { code } };
     case "password": {
-      const error = validatePasswords(password, confirmation, minimumLength);
+      const error = validatePasswords(password, confirmation, strength, minimumLength);
       if (error) return { error };
       return {
         path: "/invite/password",
