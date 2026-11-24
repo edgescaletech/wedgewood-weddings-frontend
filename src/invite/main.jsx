@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { API_BASE_URL } from "../config.js";
+import { usePasswordStrength } from "../components/usePasswordStrength.js";
+import PasswordChecklist from "../components/PasswordChecklist.jsx";
+import { minimumLength, validatePasswords } from "../components/password-policy.js";
 import PasswordInput from "../components/PasswordInput.jsx";
-import { generatePassword } from "./password.js";
+import NewPasswordField from "../components/NewPasswordField.jsx";
 import { invitationAction } from "./requests.js";
 import "../../style.css";
 import "../pages/login.css";
@@ -10,12 +13,6 @@ import "./invite.css";
 
 const token = window.__wedgewoodInvite || "";
 delete window.__wedgewoodInvite;
-const configuredMinimum = Number(import.meta.env.VITE_WORKOS_PASSWORD_MIN_LENGTH);
-const minimumLength =
-  Number.isInteger(configuredMinimum) && configuredMinimum >= 1 && configuredMinimum <= 256
-    ? configuredMinimum
-    : 8;
-
 const inviteHeadings = {
   unavailable: "Invitation unavailable",
   details: "Welcome to Wedgewood",
@@ -39,10 +36,11 @@ function InvitePage() {
   const [step, setStep] = useState("loading");
   const [profile, setProfile] = useState(null);
   const [password, setPassword] = useState("");
+  const strength = usePasswordStrength(step === "password", password);
   const [confirmation, setConfirmation] = useState("");
+  const canSetPassword = step === "password" && !validatePasswords(password, confirmation, strength);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [copyStatus, setCopyStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [canRetryLookup, setCanRetryLookup] = useState(false);
@@ -81,23 +79,6 @@ function InvitePage() {
     return () => controller.abort();
   }, [lookupAttempt]);
 
-  function generate() {
-    const generated = generatePassword(minimumLength);
-    setPassword(generated);
-    setConfirmation(generated);
-    setError("");
-    setCopyStatus("Save this password before continuing.");
-  }
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(password);
-      setCopyStatus("Password copied.");
-    } catch {
-      setCopyStatus("Could not copy automatically. Reveal your password and copy it manually.");
-    }
-  }
-
   useEffect(() => {
     if (!resendAt) return;
     const timer = window.setInterval(() => {
@@ -118,7 +99,7 @@ function InvitePage() {
     if (busy) return;
     setError("");
     const action = invitationAction(step, {
-      invitationId: profile.invitationId, code, password, confirmation, minimumLength,
+      invitationId: profile.invitationId, code, password, confirmation, strength, minimumLength,
     });
     if (action.error) {
       setError(action.error);
@@ -147,7 +128,6 @@ function InvitePage() {
         setPassword("");
         setConfirmation("");
         setCode("");
-        setCopyStatus("");
         if (path === "/invite/password") {
           window.location.replace("/login#invite-complete");
           return;
@@ -197,77 +177,49 @@ function InvitePage() {
             )}
             {["details", "password", "verify"].includes(step) && profile && (
               <form className="login-form" onSubmit={submit}>
-                <label htmlFor="invite-name">Name</label>
-                <input id="invite-name" value={profile.displayName} readOnly />
-                <label htmlFor="invite-email">Invited email</label>
-                <input
-                  id="invite-email"
-                  type="email"
-                  autoComplete="username"
-                  value={profile.email}
-                  readOnly
-                />
+                <div className="invite-identity">
+                  <div>
+                    <label htmlFor="invite-name">Name</label>
+                    <input id="invite-name" value={profile.displayName} title={profile.displayName} readOnly />
+                  </div>
+                  <div>
+                    <label htmlFor="invite-email">Invited email</label>
+                    <input
+                      id="invite-email"
+                      type="email"
+                      autoComplete="username"
+                      value={profile.email}
+                      title={profile.email}
+                      readOnly
+                    />
+                  </div>
+                </div>
                 {step === "password" ? (
                   <>
-                    <div className="invite-password-heading">
-                      <label htmlFor="invite-password">New password</label>
-                      <button type="button" disabled={busy} onClick={generate}>
-                        Generate
-                      </button>
-                    </div>
-                    <div className="invite-password-field">
-                      <PasswordInput
-                        id="invite-password"
-                        autoComplete="new-password"
-                        aria-describedby="invite-password-help"
-                        required
-                        maxLength={256}
-                        value={password}
-                        onChange={(event) => {
-                          setPassword(event.target.value);
-                          setCopyStatus("");
-                        }}
-                      />
-                      <button
-                        className="password-visibility invite-copy-password"
-                        type="button"
-                        aria-label="Copy password"
-                        title="Copy password"
-                        disabled={!password || busy}
-                        onClick={copy}
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          width="18"
-                          height="18"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.7"
-                          aria-hidden="true"
-                        >
-                          <rect x="8" y="8" width="12" height="12" rx="2" />
-                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                        </svg>
-                      </button>
-                    </div>
-                    {minimumLength > 0 && (
-                      <p className="invite-hint" id="invite-password-help">
-                        Use at least {minimumLength} characters.
-                      </p>
-                    )}
+                    <NewPasswordField
+                      id="invite-password"
+                      describedBy="invite-password-help"
+                      password={password}
+                      busy={busy}
+                      maxLength={256}
+                      onChange={setPassword}
+                      onGenerate={(generated) => {
+                        setPassword(generated);
+                        setConfirmation(generated);
+                        setError("");
+                      }}
+                    />
                     <label htmlFor="invite-password-confirm">Confirm password</label>
                     <PasswordInput
                       id="invite-password-confirm"
+                      aria-describedby="invite-password-help"
                       autoComplete="new-password"
                       required
                       maxLength={256}
                       value={confirmation}
                       onChange={(event) => setConfirmation(event.target.value)}
                     />
-                    {confirmation && password !== confirmation && (
-                      <p className="invite-hint">Passwords do not match.</p>
-                    )}
-                    {copyStatus && <p className="invite-hint" role="status">{copyStatus}</p>}
+                    <PasswordChecklist id="invite-password-help" password={password} confirmation={confirmation} strength={strength} />
                   </>
                 ) : step === "verify" && (
                   <>
@@ -286,7 +238,8 @@ function InvitePage() {
                   </>
                 )}
                 {error && <p className="login-alert" role="alert">{error}</p>}
-                <button className="login-button" type="submit" disabled={busy || (step === "details" && resendSeconds > 0)}>
+                <button className="login-button" type="submit" disabled={busy || (step === "details" && resendSeconds > 0) || (step === "password" && !canSetPassword)}
+                  aria-describedby={step === "password" ? "invite-password-help" : undefined}>
                   {busy
                     ? "Working…"
                     : step === "details" && resendSeconds > 0

@@ -6,7 +6,7 @@
   display: grid;
   place-items: center;
   min-width: 0;
-  padding: 28px clamp(16px, 4vw, 52px);
+  padding: clamp(16px, 3vh, 28px) clamp(16px, 4vw, 52px);
   background: #f2f5f1;
 }
 
@@ -19,17 +19,17 @@
 }
 
 .invite-layout > .login-brand {
-  margin: 0 auto 18px;
+  margin: 0 auto 14px;
 }
 
 .invite-shell .invite-card {
   margin: 0;
-  padding: clamp(20px, 5vw, 30px);
+  padding: clamp(18px, 3vw, 26px);
   border-radius: 12px;
 }
 
 .invite-heading h1 {
-  font-size: clamp(24px, 5vw, 28px);
+  font-size: clamp(23px, 2.5vw, 27px);
   line-height: 1.2;
   letter-spacing: -0.035em;
 }
@@ -68,7 +68,21 @@
   line-height: 1.45;
 }
 
+.invite-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e3ece5;
+}
+
+.invite-card .invite-identity label {
+  margin-top: 0;
+}
+
 .invite-card .login-form input[readonly] {
+  height: 38px;
+  text-overflow: ellipsis;
   background: #f3f6f3;
   color: #41564a;
 }
@@ -78,61 +92,20 @@
   font-size: 12px;
 }
 
-.invite-password-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 10px 0 5px;
-}
-
-.invite-password-heading label {
-  margin: 0;
-}
-
-.invite-password-heading button {
-  padding: 3px 0;
-  border: 0;
-  background: transparent;
-  color: #1e4a38;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-
-.invite-password-field {
-  position: relative;
-}
-
-.invite-shell .invite-password-field .password-input input {
-  padding-right: 82px;
-}
-
-.invite-password-field .password-visibility {
-  width: 36px;
-}
-
-.invite-password-field .password-input .password-visibility {
-  right: 40px;
-}
-
-.invite-password-heading button:disabled,
-.invite-copy-password:disabled {
-  opacity: 0.5;
-  cursor: default;
-  background: transparent;
-}
-
 .invite-shell .login-button {
-  justify-content: center;
   min-height: 44px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .invite-shell :is(a, button, input):focus-visible {
   outline: 2px solid #245f47;
   outline-offset: 2px;
+}
+
+
+@media (max-width: 460px), (min-width: 801px) and (max-width: 930px) {
+  .invite-identity {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
 }
