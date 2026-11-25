@@ -6,6 +6,10 @@ const projectDir = dirname(fileURLToPath(import.meta.url));
 
 const pageEntries = {
   '/invite': '/invite/index.html',
+  '/staffing': '/staffing/index.html',
+  '/staffing.html': '/staffing/index.html',
+  '/goals': '/goals/index.html',
+  '/goals.html': '/goals/index.html',
   '/admin': '/admin/users.html',
   '/admin/users': '/admin/users.html',
   '/admin/labor-targets': '/admin/labor-targets.html',
@@ -50,10 +54,8 @@ export default defineConfig({
         login: resolve(projectDir, 'login/index.html'),
         invite: resolve(projectDir, 'invite/index.html'),
         resetPassword: resolve(projectDir, 'reset-password/index.html'),
-        staffing: resolve(projectDir, 'staffing.html'),
-        staffingRoute: resolve(projectDir, 'staffing/index.html'),
-        goals: resolve(projectDir, 'goals.html'),
-        goalsRoute: resolve(projectDir, 'goals/index.html'),
+        staffing: resolve(projectDir, 'staffing/index.html'),
+        goals: resolve(projectDir, 'goals/index.html'),
         laborTargets: resolve(projectDir, 'admin/labor-targets.html'),
       },
     },
