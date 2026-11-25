@@ -61,7 +61,7 @@ const isAdminPage = page === "admin";
 function ProtectedPage() {
   const [status, setStatus] = useState("checking");
   const [attempt, setAttempt] = useState(0);
-  const { access, accessError, loading: accessLoading, reloadAccess } = useAuth();
+  const { user, access, accessError, loading: accessLoading, reloadAccess } = useAuth();
   const canOpenAdminPage = initialAdminPage === "laborTargets"
     ? hasLaborTargetsAccess(access)
     : hasAdminDashboardAccess(access);
@@ -95,8 +95,7 @@ function ProtectedPage() {
 
     function revalidateSession() {
       if (checking) return;
-      setStatus("checking");
-      reloadAccess();
+      reloadAccess({ background: true });
       checkSession();
     }
 
@@ -153,7 +152,7 @@ function ProtectedPage() {
     }
   }
 
-  if (status === "authenticated") return <Page />;
+  if (status === "authenticated") return <Page key={user?.id} />;
   if (status === "redirecting") return null;
   if (status === "unavailable") {
     return (

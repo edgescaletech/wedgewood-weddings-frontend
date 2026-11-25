@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useRef, useState, useEffect } from "react";
 import { API_BASE_URL } from "../config.js";
 
 import { hasVenuePermission, resolveIdentityPermissions } from "./identity-permissions.js";
@@ -20,13 +20,15 @@ export function AuthProvider({ children }) {
   const [access, setAccess] = useState(null);
   const [accessError, setAccessError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [accessRevision, setAccessRevision] = useState(0);
-  const reloadAccess = useCallback(() => {
-    setUser(null);
-    setAccess(null);
-    setAccessError(false);
-    setLoading(true);
-    setAccessRevision(revision => revision + 1);
+  const identityID = useRef(null);
+  const [accessRequest, setAccessRequest] = useState({ background: false });
+  const reloadAccess = useCallback(({ background = false } = {}) => {
+    if (!background) {
+      setAccess(null);
+      setAccessError(false);
+      setLoading(true);
+    }
+    setAccessRequest({ background });
   }, []);
 
   useEffect(() => {
@@ -40,14 +42,22 @@ export function AuthProvider({ children }) {
           signal: controller.signal,
         });
 
-        const identity = response.ok ? await response.json() : null;
         if (controller.signal.aborted) return;
-        if (accessRevision > 0 && (response.status === 401 || response.status === 403)) {
-          window.location.replace("/login");
+        if (response.status === 401 || response.status === 403) {
+          setUser(null);
+          setAccess(null);
+          if (identityID.current !== null || accessRequest.background) {
+            window.location.replace("/login");
+          }
           return;
         }
-        setUser(identity);
-        if (!identity) return;
+        if (!response.ok) throw new Error("Identity unavailable");
+        const identity = await response.json();
+        if (controller.signal.aborted) return;
+        if (identityID.current !== null && identityID.current !== identity.id) {
+          setAccess(null);
+          setLoading(true);
+        }
 
         const accessResponse = await fetch(`${API_BASE_URL}/auth/access`, {
           credentials: "include",
@@ -56,14 +66,28 @@ export function AuthProvider({ children }) {
         });
         if (controller.signal.aborted) return;
         if (accessResponse.status === 401 || accessResponse.status === 403) {
+          setUser(null);
+          setAccess(null);
           window.location.replace("/login");
           return;
         }
         if (!accessResponse.ok) throw new Error("Access unavailable");
         const userAccess = await accessResponse.json();
-        if (!controller.signal.aborted) setAccess(userAccess);
+        if (controller.signal.aborted) return;
+
+        const sameIdentity = identityID.current === identity.id;
+        identityID.current = identity.id;
+        setUser(identity);
+        setAccessError(false);
+        // Go returns permissions in a stable order. Retain the existing snapshot
+        // when it matches so dependent views do not refetch their data.
+        setAccess(previous => accessRequest.background && sameIdentity &&
+          JSON.stringify(previous) === JSON.stringify(userAccess) ? previous : userAccess);
       } catch {
-        if (!controller.signal.aborted) setAccessError(true);
+        if (!controller.signal.aborted) {
+          setAccess(null);
+          setAccessError(true);
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -71,7 +95,7 @@ export function AuthProvider({ children }) {
 
     loadIdentity();
     return () => controller.abort();
-  }, [accessRevision]);
+  }, [accessRequest]);
 
   const { role, permissions } = resolveIdentityPermissions(user);
 
