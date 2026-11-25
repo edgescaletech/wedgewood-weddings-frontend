@@ -64,7 +64,9 @@ export default function StaffingPage() {
   const [weekEvents, setWeekEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
-  const [venues, setVenues] = useState(null);
+  const [venueResult, setVenueResult] = useState(null);
+  // Hide previously loaded venues as soon as the underlying grants change.
+  const venues = venueResult?.access === access ? venueResult.venues : null;
   const [venueError, setVenueError] = useState('');
   const [eventsError, setEventsError] = useState('');
   const [eventDetailError, setEventDetailError] = useState('');
@@ -120,7 +122,10 @@ export default function StaffingPage() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const directory = await response.json();
         if (!controller.signal.aborted) {
-          setVenues(directory.filter(venue => hasVenuePermission(access, venue.id, 'schedules.view')));
+          setVenueResult({
+            access,
+            venues: directory.filter(venue => hasVenuePermission(access, venue.id, 'schedules.view')),
+          });
         }
       } catch {
         if (!controller.signal.aborted) setVenueError('Could not load your venues. Reload the page to try again.');
@@ -207,7 +212,7 @@ export default function StaffingPage() {
         if (response.status === 403 || response.status === 404) {
           // The refreshed list can still contain an event whose detail was denied.
           deniedEventIds.current.add(selectedEventId);
-          setVenues(null);
+          setVenueResult(null);
           setCurrentVenueId('');
           setWeekEvents([]);
           setSelectedEvent(null);
