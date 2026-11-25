@@ -103,7 +103,11 @@ test("AUTHN-06 an inactive linked account cannot sign in @live", async ({
 test("AUTHN-07 sign-in reports a temporary authentication failure", async ({
   page,
 }) => {
-  await stubIdentity(page, 401);
+  let identityChecks = 0;
+  await stubIdentity(page, () => {
+    identityChecks += 1;
+    return 401;
+  });
   await page.route(apiPath("/auth/password"), (route) =>
     route.fulfill({
       status: 503,
@@ -123,4 +127,5 @@ test("AUTHN-07 sign-in reports a temporary authentication failure", async ({
   await expect(
     page.getByRole("button", { name: "Sign in", exact: true }),
   ).toBeEnabled();
+  expect(identityChecks).toBe(1);
 });

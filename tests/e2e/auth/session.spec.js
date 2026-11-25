@@ -97,10 +97,15 @@ test("AUTHN-07 retry rechecks the session after a temporary outage", async ({
 });
 
 test("AUTHN-05 tab focus rechecks access without remounting an unchanged session", async ({ page }) => {
-  await stubIdentity(page, 200);
+  let identityChecks = 0;
+  await stubIdentity(page, () => {
+    identityChecks += 1;
+    return 200;
+  });
   await stubStaffingData(page);
   await page.goto("/staffing/");
   await expect(page.getByText("No venues are available for scheduling.")).toBeVisible();
+  expect(identityChecks).toBe(1);
   await page.getByRole("button", { name: "More options" }).click();
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
@@ -117,6 +122,7 @@ test("AUTHN-05 tab focus rechecks access without remounting an unchanged session
     const accessResponse = page.waitForResponse(matchesResponse("/auth/access"));
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await accessRequested;
+    expect(identityChecks).toBe(2);
     await expect(menu).toBeVisible();
     await expect(page.getByText("Checking your session…")).toHaveCount(0);
 
