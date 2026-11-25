@@ -29,11 +29,3 @@ export function generatePassword(minimumLength = 0, random = globalThis.crypto) 
   }
   return password.join("");
 }
-
-export function validatePasswords(password, confirmation, minimumLength = 0) {
-  if (!password) return "Enter a password.";
-  if (password.length < minimumLength)
-    return `Use at least ${minimumLength} characters.`;
-  if (password !== confirmation) return "Passwords do not match.";
-  return "";
-}
