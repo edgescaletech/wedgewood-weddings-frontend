@@ -17,8 +17,9 @@ export default function AppHeader({
   isBeoView = false,
   onBackToSchedule,
 }) {
-  const { hasPermission, access } = useAuth();
-  const canPublishADP = hasPermission("publish_adp");
+  const { hasVenuePermission, access } = useAuth();
+  const canPublishADP = hasVenuePermission(currentVenue?.id, "schedules.publish");
+  const canViewGoals = hasVenuePermission(currentVenue?.id, "labor_goals.view");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [logoutStatus, setLogoutStatus] = useState("idle");
   const moreMenuRef = useRef(null);
@@ -74,6 +75,7 @@ export default function AppHeader({
               }}
               aria-label="Select venue"
             >
+              {!currentVenue && <option value="" disabled>Select venue</option>}
               {venues.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name}
@@ -82,7 +84,7 @@ export default function AppHeader({
             </select>
           ) : (
             <span className="venue-title" id="active-venue-name">
-              {currentVenue?.name || "Evergreen Grove"}
+              {currentVenue?.name || venues[0]?.name || "Staffing"}
             </span>
           )}
           <span className="venue-sub">
@@ -190,15 +192,15 @@ export default function AppHeader({
                   <span className="menu-arrow">›</span>
                 </a>
               ) : null}
-              <a
-                href={currentVenue?.id ? `/goals?venueId=${encodeURIComponent(currentVenue.id)}` : '/goals'}
+              {canViewGoals && <a
+                href={`/goals?venueId=${encodeURIComponent(currentVenue.id)}`}
                 className="more-menu-item"
                 role="menuitem"
                 onClick={() => setShowMoreMenu(false)}
               >
                 <span>Goals & budgets</span>
                 <span className="menu-arrow">›</span>
-              </a>
+              </a>}
               <button
                 type="button"
                 className="more-menu-item"

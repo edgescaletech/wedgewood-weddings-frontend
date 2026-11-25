@@ -68,11 +68,11 @@ const ROLE_GROUPS = [
   },
 ];
 
-export default function WeekScheduleGrid({ weekStart, events = [] }) {
+export default function WeekScheduleGrid({ weekStart, events = [], venueId }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
-  const { hasPermission } = useAuth();
-  const canEditSchedules = hasPermission('edit_schedule');
+  const { hasVenuePermission } = useAuth();
+  const canEditSchedules = hasVenuePermission(venueId, 'schedules.edit');
 
   const startDate = new Date(`${weekStart}T12:00:00`);
   const days = Array.from({ length: 7 }, (_, i) => {

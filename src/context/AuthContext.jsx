@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
 import { API_BASE_URL } from "../config.js";
 
-import { resolveIdentityPermissions } from "./identity-permissions.js";
+import { hasVenuePermission, resolveIdentityPermissions } from "./identity-permissions.js";
 
 const AuthContext = createContext({
   user: null,
@@ -9,6 +9,8 @@ const AuthContext = createContext({
   accessError: false,
   ...resolveIdentityPermissions(null),
   hasPermission: () => false,
+  hasVenuePermission: () => false,
+  reloadAccess: () => {},
   isRole: () => false,
   loading: true,
 });
@@ -18,6 +20,14 @@ export function AuthProvider({ children }) {
   const [access, setAccess] = useState(null);
   const [accessError, setAccessError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [accessRevision, setAccessRevision] = useState(0);
+  const reloadAccess = useCallback(() => {
+    setUser(null);
+    setAccess(null);
+    setAccessError(false);
+    setLoading(true);
+    setAccessRevision(revision => revision + 1);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -32,6 +42,10 @@ export function AuthProvider({ children }) {
 
         const identity = response.ok ? await response.json() : null;
         if (controller.signal.aborted) return;
+        if (accessRevision > 0 && (response.status === 401 || response.status === 403)) {
+          window.location.replace("/login");
+          return;
+        }
         setUser(identity);
         if (!identity) return;
 
@@ -40,7 +54,8 @@ export function AuthProvider({ children }) {
           cache: "no-store",
           signal: controller.signal,
         });
-        if (accessResponse.status === 401) {
+        if (controller.signal.aborted) return;
+        if (accessResponse.status === 401 || accessResponse.status === 403) {
           window.location.replace("/login");
           return;
         }
@@ -56,7 +71,7 @@ export function AuthProvider({ children }) {
 
     loadIdentity();
     return () => controller.abort();
-  }, []);
+  }, [accessRevision]);
 
   const { role, permissions } = resolveIdentityPermissions(user);
 
@@ -77,6 +92,8 @@ export function AuthProvider({ children }) {
         role,
         permissions,
         hasPermission,
+        hasVenuePermission: (venueId, permission) => hasVenuePermission(access, venueId, permission),
+        reloadAccess,
         isRole,
         loading,
       }}

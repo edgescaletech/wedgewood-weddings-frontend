@@ -61,7 +61,7 @@ const isAdminPage = page === "admin";
 function ProtectedPage() {
   const [status, setStatus] = useState("checking");
   const [attempt, setAttempt] = useState(0);
-  const { access, accessError, loading: accessLoading } = useAuth();
+  const { access, accessError, loading: accessLoading, reloadAccess } = useAuth();
   const canOpenAdminPage = initialAdminPage === "laborTargets"
     ? hasLaborTargetsAccess(access)
     : hasAdminDashboardAccess(access);
@@ -93,21 +93,28 @@ function ProtectedPage() {
       }
     }
 
+    function revalidateSession() {
+      if (checking) return;
+      setStatus("checking");
+      reloadAccess();
+      checkSession();
+    }
+
     function checkRestoredSession(event) {
-      if (event.persisted) checkSession();
+      if (event.persisted) revalidateSession();
     }
 
     checkSession();
-    window.addEventListener("focus", checkSession);
+    window.addEventListener("focus", revalidateSession);
     window.addEventListener("pageshow", checkRestoredSession);
-    window.addEventListener("popstate", checkSession);
+    window.addEventListener("popstate", revalidateSession);
     return () => {
       controller.abort();
-      window.removeEventListener("focus", checkSession);
+      window.removeEventListener("focus", revalidateSession);
       window.removeEventListener("pageshow", checkRestoredSession);
-      window.removeEventListener("popstate", checkSession);
+      window.removeEventListener("popstate", revalidateSession);
     };
-  }, [attempt]);
+  }, [attempt, reloadAccess]);
 
   useEffect(() => {
     if (
@@ -155,6 +162,7 @@ function ProtectedPage() {
         <button
           onClick={() => {
             setStatus("checking");
+            reloadAccess();
             setAttempt(attempt + 1);
           }}
         >

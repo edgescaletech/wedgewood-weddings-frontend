@@ -20,3 +20,11 @@ export function hasAdminDashboardAccess(access) {
 export function hasLaborTargetsAccess(access) {
   return access?.global?.permissions?.includes("labor_goals.manage") === true;
 }
+
+export function hasVenuePermission(access, venueId, permission) {
+  if (!venueId || !permission) return false;
+  const venue = access?.venues?.[venueId];
+  if (!venue) return false;
+  return venue.permissions?.includes(permission) === true ||
+    access.global?.permissions?.includes(permission) === true;
+}

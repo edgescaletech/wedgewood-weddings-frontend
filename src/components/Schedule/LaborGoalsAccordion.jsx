@@ -4,98 +4,57 @@ import { API_BASE_URL as apiBase } from '../../config.js';
 
 export default function LaborGoalsAccordion({
   venueId = '',
-  weekDates = 'Nov 23–Nov 29',
-  monthLabel = 'This month · November',
   eventId = '',
   weekStart = '2026-11-23',
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
-  const [summaryData, setSummaryData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const { hasPermission } = useAuth();
-  const canCompareGoals = hasPermission('compare_labor_goals');
+  const [summary, setSummary] = useState(null);
+  const { hasVenuePermission } = useAuth();
+  const canCompareGoals = hasVenuePermission(venueId, 'labor_goals.view');
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadSummary() {
-      if (!isOpen) return;
-      setLoading(true);
-      try {
-        const queryParams = new URLSearchParams();
-        if (venueId) queryParams.set('venueId', venueId);
-        if (weekStart) queryParams.set('week', weekStart);
+    if (!isOpen || !canCompareGoals) return;
+    const controller = new AbortController();
 
-        const res = await fetch(`${apiBase}/api/labor-goals/summary?${queryParams.toString()}`, {
+    async function loadSummary() {
+      try {
+        const query = new URLSearchParams({ venueId, week: weekStart });
+        const response = await fetch(`${apiBase}/api/labor-goals/summary?${query}`, {
           credentials: 'include',
+          signal: controller.signal,
         });
-        if (res.ok) {
-          const json = await res.json();
-          if (!cancelled) setSummaryData(json);
+        if (controller.signal.aborted) return;
+        if (response.status === 401) {
+          window.location.replace('/login');
+          return;
         }
-      } catch (err) {
-        console.error('Failed to load labor goals summary:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (response.status === 403) {
+          setSummary({ venueId, weekStart, error: 'You do not have access to Labor goals for this venue.' });
+          return;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        if (!data?.weekPlan || !data.monthPlan) {
+          throw new Error('Missing Labor plans');
+        }
+        if (!controller.signal.aborted) setSummary({ venueId, weekStart, data });
+      } catch {
+        if (!controller.signal.aborted) {
+          setSummary({ venueId, weekStart, error: 'Could not load Labor goals. Close and reopen to try again.' });
+        }
       }
     }
 
     loadSummary();
-    return () => { cancelled = true; };
-  }, [isOpen, venueId, weekStart]);
+    return () => controller.abort();
+  }, [isOpen, venueId, weekStart, canCompareGoals]);
 
   if (!canCompareGoals) return null;
 
-  // Use dynamic backend data if loaded, otherwise render sensible calculated defaults
-  const weekPlan = summaryData?.weekPlan || {
-    label: "This week’s plan",
-    dates: weekDates,
-    foh: {
-      targetLe: 2.1,
-      currentLe: 0,
-      budgetHours: 257.14,
-      scheduledHours: 0,
-      remainingHours: 257.14,
-      totalGuests: 540,
-      totalEvents: 4,
-      eventsWithStaffing: 0
-    },
-    boh: {
-      targetLe: 3.5,
-      currentLe: 0,
-      budgetHours: 154.29,
-      scheduledHours: 0,
-      remainingHours: 154.29,
-      totalGuests: 540,
-      totalEvents: 4,
-      eventsWithStaffing: 0
-    }
-  };
-
-  const monthPlan = summaryData?.monthPlan || {
-    label: monthLabel,
-    dates: "Nov 2–Nov 29",
-    foh: {
-      targetLe: 2.1,
-      currentLe: 2.57,
-      budgetHours: 642.86,
-      scheduledHours: 315,
-      remainingHours: 327.86,
-      totalGuests: 1350,
-      totalEvents: 13,
-      eventsWithStaffing: 9
-    },
-    boh: {
-      targetLe: 3.5,
-      currentLe: 3.78,
-      budgetHours: 385.71,
-      scheduledHours: 214.5,
-      remainingHours: 171.21,
-      totalGuests: 1350,
-      totalEvents: 13,
-      eventsWithStaffing: 9
-    }
-  };
+  const currentSummary = summary?.venueId === venueId && summary.weekStart === weekStart ? summary : null;
+  const { weekPlan, monthPlan } = currentSummary?.data ?? {};
 
   const formatRatio = (current, target) => {
     if (current > 0) {
@@ -109,14 +68,23 @@ export default function LaborGoalsAccordion({
       <button
         type="button"
         className="labor-goals-toggle"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setSummary(null);
+          setIsOpen(!isOpen);
+        }}
         aria-expanded={isOpen}
       >
         <span className={`accordion-caret ${isOpen ? 'open' : ''}`}>▶</span>
         <span className="accordion-title">Labor goals</span>
       </button>
 
-      {isOpen && (
+      {isOpen && currentSummary?.error && (
+        <p className="labor-plan-strip-inner" role="alert">{currentSummary.error}</p>
+      )}
+      {isOpen && !currentSummary && (
+        <p className="labor-plan-strip-inner" role="status">Loading Labor goals…</p>
+      )}
+      {isOpen && weekPlan && monthPlan && (
         <div className="labor-plan-strip-inner">
           <div className="labor-goals-top-link">
             <a

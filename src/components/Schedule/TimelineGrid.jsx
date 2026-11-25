@@ -23,11 +23,11 @@ const DEFAULT_BOH_WORKERS = [
   { id: 'w16', name: 'Amy Santiago', hours: '24 h', startTime: '5:30 PM', endTime: '1:30 AM', role: 'Kitchen Utility', shiftBar: '5:30–1:30 +1 day', leftPct: 59, widthPct: 33 },
 ];
 
-export default function TimelineGrid({ activeEvent }) {
+export default function TimelineGrid({ activeEvent, venueId }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
-  const { hasPermission } = useAuth();
-  const canEditSchedules = hasPermission('edit_schedule');
+  const { hasVenuePermission } = useAuth();
+  const canEditSchedules = hasVenuePermission(venueId, 'schedules.edit');
 
   const filterWorkers = (workers) => {
     return workers.filter(w => {
@@ -186,7 +186,7 @@ function WorkerRow({ worker, canEdit }) {
             <option value="Kitchen Utility">Kitchen Utility</option>
           </select>
           {worker.shiftBar && (
-            <button type="button" className="btn-clear-shift" title="Remove shift">✕</button>
+            <button type="button" className="btn-clear-shift" title="Remove shift" disabled={!canEdit}>✕</button>
           )}
         </div>
       </div>
@@ -208,8 +208,8 @@ function WorkerRow({ worker, canEdit }) {
           </div>
         )}
         <div className="row-action-buttons">
-          <button type="button" className="btn-row-add" title="Add shift">+</button>
-          <button type="button" className="btn-row-more" title="More actions">···</button>
+          <button type="button" className="btn-row-add" title="Add shift" disabled={!canEdit}>+</button>
+          <button type="button" className="btn-row-more" title="More actions" disabled={!canEdit}>···</button>
         </div>
       </div>
     </div>
