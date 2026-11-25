@@ -5,6 +5,7 @@ import {
   get,
   logout,
   test,
+  venuePicker,
 } from "../../fixtures/authorization.fixture.js";
 import { expectStaffing } from "../../helpers/navigation.js";
 test("AUTHZ-09 a new session cannot inherit the previous Admin's access @live", async ({
@@ -13,13 +14,14 @@ test("AUTHZ-09 a new session cannot inherit the previous Admin's access @live", 
 }) => {
   await auth.signIn("admin");
   const admin = await get(page.request, "/auth/me");
-  await page.goto("/admin/");
+  await page.goto("/admin/users");
   await expect(
     page.getByRole("heading", { name: "Users & access" }),
   ).toBeVisible();
   await get(page.request, "/api/admin/users");
   await page.goto("/staffing/");
   await expectStaffing(page);
+  await expect(venuePicker(page)).toBeVisible();
   await logout(page);
   expect(
     (await page.request.get(apiURL("/auth/me"), { maxRedirects: 0 })).status(),
@@ -33,7 +35,7 @@ test("AUTHZ-09 a new session cannot inherit the previous Admin's access @live", 
   const access = await get(page.request, "/auth/access");
   expect(access.global.roles).not.toContain("Admin");
   expect(access.global.permissions).not.toContain("users.view");
-  await page.goto("/admin/");
+  await page.goto("/admin/users");
   await expectStaffing(page);
   await expect(
     page.getByRole("heading", { name: "Users & access" }),

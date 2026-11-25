@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures/auth.fixture.js";
 import { apiPath, matchesResponse, stubIdentity } from "../../helpers/api.js";
 import { expectLogin, expectStaffing } from "../../helpers/navigation.js";
-const protectedRoutes = ["/staffing/", "/goals/", "/admin/"];
+const protectedRoutes = ["/staffing/", "/goals/", "/admin/users", "/admin/labor-targets"];
 for (const path of protectedRoutes) {
   test(`AUTHN-03 signed-out users cannot open ${path} @go`, async ({
     page,
@@ -94,4 +94,48 @@ test("AUTHN-07 retry rechecks the session after a temporary outage", async ({
   status = 200;
   await page.getByRole("button", { name: "Try again" }).click();
   await expectStaffing(page);
+});
+
+test("AUTHN-05 tab focus rechecks access without remounting an unchanged session", async ({ page }) => {
+  await stubIdentity(page, 200);
+  await stubStaffingData(page);
+  await page.goto("/staffing/");
+  await expect(page.getByText("No venues are available for scheduling.")).toBeVisible();
+  await page.getByRole("button", { name: "More options" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+
+  let finishAccessCheck;
+  const pendingAccess = new Promise(resolve => { finishAccessCheck = resolve; });
+  await page.route(apiPath("/auth/access"), async route => {
+    await pendingAccess;
+    await route.fulfill({ json: { global: { roles: [], permissions: [] }, venues: {} } });
+  });
+
+  try {
+    const accessRequested = page.waitForRequest(request => apiPath("/auth/access")(new URL(request.url())));
+    const accessResponse = page.waitForResponse(matchesResponse("/auth/access"));
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await accessRequested;
+    await expect(menu).toBeVisible();
+    await expect(page.getByText("Checking your session…")).toHaveCount(0);
+
+    finishAccessCheck();
+    expect((await accessResponse).status()).toBe(200);
+    await expect(menu).toBeVisible();
+  } finally {
+    finishAccessCheck();
+  }
+});
+
+test("AUTHN-05 tab focus redirects after the session expires", async ({ page }) => {
+  let sessionStatus = 200;
+  await stubIdentity(page, () => sessionStatus);
+  await stubStaffingData(page);
+  await page.goto("/staffing/");
+  await expect(page.getByText("No venues are available for scheduling.")).toBeVisible();
+
+  sessionStatus = 401;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expectLogin(page);
 });

@@ -30,6 +30,11 @@ test("AUTHZ-01 Global Admin can open Admin Management and access configured venu
   ).toBeVisible();
   await get(page.request, "/api/admin/users");
   await get(page.request, "/api/admin/roles");
+  await page.getByRole("link", { name: "Labor efficiency targets" }).click();
+  await expect(page).toHaveURL(/\/admin\/labor-targets$/);
+  await expect(
+    page.getByRole("heading", { name: "Labor efficiency targets" }),
+  ).toBeVisible();
 });
 test("AUTHZ-08 venue-scoped user cannot open Admin Management or call global Admin APIs @live", async ({
   auth,
@@ -40,11 +45,14 @@ test("AUTHZ-08 venue-scoped user cannot open Admin Management or call global Adm
   await expect(
     page.getByRole("menuitem", { name: "Admin Dashboard" }),
   ).toHaveCount(0);
-  await page.goto("/admin/");
-  await expectStaffing(page);
-  await expect(
-    page.getByRole("heading", { name: "Users & access" }),
-  ).toHaveCount(0);
+  for (const [path, heading] of [
+    ["/admin/users", "Users & access"],
+    ["/admin/labor-targets", "Labor efficiency targets"],
+  ]) {
+    await page.goto(path);
+    await expectStaffing(page);
+    await expect(page.getByRole("heading", { name: heading })).toHaveCount(0);
+  }
   for (const path of [
     "/api/admin/users",
     "/api/admin/roles",

@@ -1,5 +1,5 @@
 import { expect, test } from "../../fixtures/auth.fixture.js";
-import { matchesResponse } from "../../helpers/api.js";
+import { readEnvironment } from "../../environment.js";
 import { expectLogin, expectStaffing } from "../../helpers/navigation.js";
 test("AUTHN-04 cancel preserves the session and confirmation logs out @live", async ({
   auth,
@@ -20,16 +20,25 @@ test("AUTHN-04 cancel preserves the session and confirmation logs out @live", as
   await expect(dialog).toBeHidden();
   await page.reload();
   await expectStaffing(page);
+  const identityURL = new URL("/auth/me", readEnvironment().browserApi).href;
+  const identityStatus = async () =>
+    (await page.request.get(identityURL, { maxRedirects: 0 })).status();
+  expect(await identityStatus()).toBe(200);
+
   await openLogout();
-  const loggedOut = page.waitForResponse(
-    matchesResponse("/auth/logout", "POST"),
+  const logoutRequested = page.waitForRequest(
+    new URL("/auth/logout", identityURL).href,
   );
-  await dialog.getByRole("button", { name: "Log out", exact: true }).click();
-  expect((await loggedOut).status()).toBe(204);
+  const [request] = await Promise.all([
+    logoutRequested,
+    dialog.getByRole("button", { name: "Log out", exact: true }).click(),
+  ]);
+  expect(request.method()).toBe("POST");
   await expectLogin(page);
   expect(
     (await context.cookies()).some((cookie) => cookie.name === "session"),
   ).toBe(false);
+  expect(await identityStatus()).toBe(401);
   await page.goto("/staffing/");
   await expectLogin(page);
 });
