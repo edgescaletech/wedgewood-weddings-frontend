@@ -10,6 +10,22 @@
   ],
   "rewrites": [
     {
+      "source": "/staffing",
+      "destination": "/staffing/index.html"
+    },
+    {
+      "source": "/staffing.html",
+      "destination": "/staffing/index.html"
+    },
+    {
+      "source": "/goals",
+      "destination": "/goals/index.html"
+    },
+    {
+      "source": "/goals.html",
+      "destination": "/goals/index.html"
+    },
+    {
       "source": "/invite",
       "destination": "/invite/index.html"
     },
