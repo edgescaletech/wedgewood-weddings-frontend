@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import Staffing, { styles as staffingStyles } from "./pages/staffing.jsx";
 import Goals, { styles as goalsStyles } from "./pages/goals.jsx";
+import Profile from "./pages/profile.jsx";
 import AdminDashboard from "./admin/AdminDashboard.jsx";
 import { adminPageForPath } from "./admin/navigation.js";
 import Login from "./pages/login.jsx";
@@ -13,12 +14,14 @@ const pages = {
   admin: [AdminDashboard, ""],
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
+  profile: [Profile, ""],
   login: [Login, ""],
 };
 
 function getPage() {
   const path = window.location.pathname;
   if (adminPageForPath(path)) return "admin";
+  if (["/about", "/about/", "/about/index.html"].includes(path)) return "profile";
   if (
     [
       "/login",

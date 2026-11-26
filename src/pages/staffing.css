@@ -859,49 +859,9 @@
       margin-left: 12px;
     }
 
-    .staffing-logout-dialog {
-      width: min(360px, calc(100vw - 32px));
-      margin: auto;
-      padding: 20px;
-      background: var(--card-bg);
-      color: var(--text-main);
-      border: 1px solid var(--border-dark);
-      border-radius: 8px;
-    }
-
-    .staffing-logout-dialog::backdrop {
-      background: #0f172a66;
-    }
-
-    .staffing-logout-dialog h2 {
-      font-size: 18px;
-    }
-
-    .staffing-logout-dialog p {
-      margin-top: 8px;
-      color: var(--accent-red);
-      font-size: 13px;
-    }
-
-    .staffing-logout-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 20px;
-    }
-
-    .staffing-logout-actions button {
-      padding: 7px 12px;
-      border: 1px solid var(--border-dark);
-      border-radius: 5px;
-      background: var(--card-bg);
-      color: var(--text-main);
-    }
-
-    .staffing-logout-actions button:last-child {
-      border-color: var(--primary);
-      background: var(--primary);
-      color: #fff;
+    .menu-account-name {
+      max-width: 14rem;
+      overflow-wrap: anywhere;
     }
 
     .status-banner-strip {
