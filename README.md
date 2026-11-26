@@ -159,11 +159,13 @@ E2E_LIVE_AUTH=1 npm run test:e2e:staging -- --grep AUTHZ
 E2E_LIVE_AUTH=1 npm run test:e2e:local -- --grep AUTHN
 ```
 
-To exercise role revocation, enable `E2E_AUTHZ_MUTATIONS=1` only against isolated
+To exercise role revocation and account deactivation, enable `E2E_AUTHZ_MUTATIONS=1` only against isolated
 infrastructure with disposable test accounts. Staging also requires
 `E2E_STAGING_ISOLATED=1`. The live project uses one worker. Do not overlap
-revocation runs against the same fixture account. The test resets Venue A to
+mutation-enabled runs against the same fixture account. The revocation test resets Venue A to
 General Manager, removes the assignment, and restores it in a `finally` block,
-verifying that the Venue B assignment remains unchanged. Role writes generate
-normal Admin audit entries. If cleanup fails or the run is interrupted, verify
-and restore Venue A's General Manager grant before another run.
+verifying that the Venue B assignment remains unchanged. The deactivation test
+verifies that the existing session loses access and reactivates the account in
+its cleanup. These writes generate normal Admin audit entries. If cleanup fails
+or the run is interrupted, verify the fixture is active and has its Venue A
+General Manager grant before another run.

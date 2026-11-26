@@ -29,13 +29,13 @@ This loads `.env.e2e.local`. To run against staging, use:
 npm run test:e2e:staging
 ```
 
-This loads `.env.e2e.staging`. Both commands select all three Playwright projects. Set `E2E_LIVE_AUTH=1` in the selected file to enable real WorkOS tests and signed-out Go checks. Set `E2E_AUTHZ_MUTATIONS=1` there only if the environment and accounts are isolated and you want to include AUTHZ-07. Staging also requires `E2E_STAGING_ISOLATED=1` for Go and live tests.
+This loads `.env.e2e.staging`. Both commands select all three Playwright projects. Set `E2E_LIVE_AUTH=1` in the selected file to enable real WorkOS tests and signed-out Go checks. Set `E2E_AUTHZ_MUTATIONS=1` there only if the environment and accounts are isolated and you want to include the role revocation and deactivation tests. Staging also requires `E2E_STAGING_ISOLATED=1` for Go and live tests.
 
 | Project | Cases | Dependencies |
 | --- | ---: | --- |
 | `chromium` | 9 | Real frontend with controlled authentication or data responses. Can run without Go, PostgreSQL, or WorkOS. |
 | `chromium-go` | 4 | Real frontend and signed-out Go requests. Enable with `E2E_GO_AUTH=1` or `E2E_LIVE_AUTH=1`. |
-| `chromium-live` | 17 | Real WorkOS password sign-in, Go session cookies, and PostgreSQL-backed RBAC. Enable with `E2E_LIVE_AUTH=1`. AUTHZ-07 also needs explicit mutation opt-in. |
+| `chromium-live` | 18 | Real WorkOS password sign-in, Go session cookies, and PostgreSQL-backed RBAC. Enable with `E2E_LIVE_AUTH=1`. AUTHZ-07 and AUTHZ-11 also need explicit mutation opt-in. |
 
 ### Local
 
@@ -69,7 +69,7 @@ Use exactly three dedicated, linked WorkOS accounts.
 
 For authorization runs, set `E2E_AUTHZ_WEEK` to an actual Monday in `YYYY-MM-DD` format with distinct existing events in all three venues. Replace any example date with a week in the selected environment. The tests resolve venue IDs through the backend. Override names with `E2E_AUTHZ_VENUE_A`, `E2E_AUTHZ_VENUE_B`, and `E2E_AUTHZ_VENUE_C` if needed. The labor access tests need no accounting-period or labor-target seed data.
 
-AUTHZ-07 is skipped unless `E2E_AUTHZ_MUTATIONS=1`. Only enable it on isolated infrastructure. It uses separate Admin and mixed-role browser contexts and modifies only the mixed-role fixture's Venue A assignment. It restores that assignment in `finally`, checks Venue B stays assigned, and can leave normal Admin audit entries. Run one mutation-enabled suite per fixture account at a time. If a run is interrupted, verify the Venue A General Manager grant before rerunning.
+AUTHZ-07 and AUTHZ-11 are skipped unless `E2E_AUTHZ_MUTATIONS=1`. Only enable these tests on isolated infrastructure. Both use separate Admin and mixed-role browser contexts and restore the fixture in `finally`. AUTHZ-07 temporarily removes the Venue A assignment and verifies Venue B stays assigned. AUTHZ-11 temporarily deactivates the mixed-role account and verifies reactivation in cleanup. The tests can leave normal Admin audit entries. Run one mutation-enabled suite per fixture account at a time. If interrupted, verify the mixed-role account is active and has its Venue A General Manager grant before rerunning.
 
 ## Playwright coverage
 
@@ -101,6 +101,7 @@ All authorization cases use real backend responses.
 | AUTHZ-08 | `admin-access.spec.js` | Mixed-role users cannot open Admin routes or call restricted Admin APIs. The role-write probe has an empty payload and checks authorization before validation. |
 | AUTHZ-09 | `session-isolation.spec.js` | Signing out as Admin and signing back in as the mixed-role user in the same browser removes Admin grants and access. |
 | AUTHZ-10 | `venue-isolation.spec.js` | Labor summary and targets return `401` signed out, `403` at Venue C, and success at Venues A and B. Checks access only. |
+| AUTHZ-11 | `account-deactivation.spec.js` | Admin deactivation invalidates a signed-in user's current session. The open Staffing tab redirects to login on revalidation, and protected API access returns `401`. Cleanup reactivates the fixture. |
 
 ## Unit coverage
 
@@ -129,5 +130,5 @@ Pass Playwright flags such as `--headed`, `--grep`, and `--project` after `--`. 
 ## Verification
 
 - 30 Node.js tests passed and the Vite production build completed.
-- Playwright discovered 30 cases. All 9 controlled Chromium cases passed locally.
-- Targeted staging runs verified real logout and session isolation, both Admin route guards, and Admin access. A successful full staging run of the current 30-case inventory has not been recorded.
+- All 31 Playwright cases passed locally, including live WorkOS sign-in, venue revocation, and account deactivation.
+- Targeted staging runs verified real logout and session isolation, both Admin route guards, and Admin access. The full 31-case suite still needs a staging run.
