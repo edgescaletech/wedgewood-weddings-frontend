@@ -3,6 +3,7 @@ import { primaryRoleAssignment } from "../admin/access-model.js";
 import LogoutDialog from "../components/LogoutDialog.jsx";
 import { API_BASE_URL } from "../config.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import ProfileSessions from "./ProfileSessions.jsx";
 import "./profile.css";
 
 function ProfileLogout() {
@@ -213,6 +214,7 @@ export default function Profile() {
                 <VenueList venues={currentResult.venues} />
               )}
             </section>
+            <ProfileSessions />
           </>
         )}
         <section className="profile-card profile-session" aria-labelledby="profile-session-heading">
