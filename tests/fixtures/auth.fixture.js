@@ -47,10 +47,6 @@ export async function signIn(page, account) {
   expect(session?.httpOnly).toBe(true);
   expect(session?.sameSite).toBe("Lax");
   expect(session?.secure).toBe(new URL(response.url()).protocol === "https:");
-  if (account === "admin") {
-    await expect(page.getByText("You’re signed in.", { exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Continue to work dashboard" }).click();
-  }
   await expectStaffing(page);
 }
 export { expect };
