@@ -6,7 +6,6 @@ import { validatePasswords } from "../components/password-policy.js";
 import NewPasswordField from "../components/NewPasswordField.jsx";
 import { clearResetToken, resumeResetToken } from "./reset-token.js";
 import PasswordInput from "../components/PasswordInput.jsx";
-import { hasAdminDashboardAccess } from "../context/identity-permissions.js";
 import "./login.css";
 
 
@@ -47,7 +46,7 @@ export default function Login() {
           signal: controller.signal,
         });
         if (response.ok) {
-          await routeSignedInUser(controller.signal);
+          window.location.replace("/staffing/");
           return;
         }
         const nextStatus =
@@ -67,26 +66,6 @@ export default function Login() {
     checkSession();
     return () => controller.abort();
   }, [inviteComplete]);
-
-  async function routeSignedInUser(signal) {
-    const response = await fetch(`${apiBase}/auth/access`, {
-      credentials: "include",
-      cache: "no-store",
-      signal,
-    });
-    if (!response.ok) {
-      setStatus("unavailable");
-      return;
-    }
-
-    const access = await response.json();
-    if (hasAdminDashboardAccess(access)) {
-      setStatus("signed-in");
-      return;
-    }
-
-    window.location.replace("/staffing/");
-  }
 
   async function signIn(event) {
     event.preventDefault();
@@ -120,7 +99,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) await routeSignedInUser();
+      if (account.ok) window.location.replace("/staffing/");
       else if (account.status === 403) setStatus("inactive");
       else {
         setFormError(
@@ -162,7 +141,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) await routeSignedInUser();
+      if (account.ok) window.location.replace("/staffing/");
       else if (account.status === 403) {
         setView("login");
         setStatus("inactive");
@@ -454,13 +433,6 @@ export default function Login() {
                   Contact your administrator to request access to the scheduling
                   workspace.
                 </p>
-              </div>
-            ) : status === "signed-in" ? (
-              <div className="login-message" role="status">
-                <strong>You’re signed in.</strong>
-                <a className="login-button" href="/staffing/">
-                  Continue to work dashboard <span aria-hidden="true">→</span>
-                </a>
               </div>
             ) : (
               <>

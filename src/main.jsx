@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { API_BASE_URL as apiBase } from "./config.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import Staffing, { styles as staffingStyles } from "./pages/staffing.jsx";
 import Goals, { styles as goalsStyles } from "./pages/goals.jsx";
@@ -59,75 +58,43 @@ const isAdminPage = page === "admin";
 
 // Check the server session before rendering application components.
 function ProtectedPage() {
-  const [status, setStatus] = useState("checking");
-  const [attempt, setAttempt] = useState(0);
-  const { user, access, accessError, loading: accessLoading, reloadAccess } = useAuth();
+  const { user, sessionStatus, access, accessError, loading: accessLoading, reloadAccess } = useAuth();
   const canOpenAdminPage = initialAdminPage === "laborTargets"
     ? hasLaborTargetsAccess(access)
     : hasAdminDashboardAccess(access);
 
   useEffect(() => {
-    const controller = new AbortController();
-    let checking = false;
-
-    async function checkSession() {
-      if (checking) return;
-      checking = true;
-      try {
-        const response = await fetch(`${apiBase}/auth/me`, {
-          credentials: "include",
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        if (response.status === 401 || response.status === 403) {
-          setStatus("redirecting");
-          window.location.replace("/login");
-          return;
-        }
-        setStatus(response.ok ? "authenticated" : "unavailable");
-      } catch (error) {
-        if (error.name !== "AbortError") setStatus("unavailable");
-      } finally {
-        checking = false;
-      }
-    }
-
     function revalidateSession() {
-      if (checking) return;
       reloadAccess({ background: true });
-      checkSession();
     }
 
     function checkRestoredSession(event) {
       if (event.persisted) revalidateSession();
     }
 
-    checkSession();
     window.addEventListener("focus", revalidateSession);
     window.addEventListener("pageshow", checkRestoredSession);
     window.addEventListener("popstate", revalidateSession);
     return () => {
-      controller.abort();
       window.removeEventListener("focus", revalidateSession);
       window.removeEventListener("pageshow", checkRestoredSession);
       window.removeEventListener("popstate", revalidateSession);
     };
-  }, [attempt, reloadAccess]);
+  }, [reloadAccess]);
 
   useEffect(() => {
     if (
       isAdminPage &&
-      status === "authenticated" &&
+      sessionStatus === "authenticated" &&
       !accessLoading &&
       !accessError &&
       !canOpenAdminPage
     ) {
       window.location.replace("/staffing/");
     }
-  }, [accessError, accessLoading, canOpenAdminPage, status]);
+  }, [accessError, accessLoading, canOpenAdminPage, sessionStatus]);
 
-  if (status === "authenticated" && isAdminPage) {
+  if (sessionStatus === "authenticated" && isAdminPage) {
     if (accessLoading) {
       return (
         <main role="status" style={{ padding: "24px", textAlign: "center" }}>
@@ -152,21 +119,13 @@ function ProtectedPage() {
     }
   }
 
-  if (status === "authenticated") return <Page key={user?.id} />;
-  if (status === "redirecting") return null;
-  if (status === "unavailable") {
+  if (sessionStatus === "authenticated") return <Page key={user.id} />;
+  if (sessionStatus === "redirecting") return null;
+  if (sessionStatus === "unavailable") {
     return (
       <main role="alert" style={{ padding: "24px", textAlign: "center" }}>
         Unable to check your session.{" "}
-        <button
-          onClick={() => {
-            setStatus("checking");
-            reloadAccess();
-            setAttempt(attempt + 1);
-          }}
-        >
-          Try again
-        </button>
+        <button onClick={() => reloadAccess()}>Try again</button>
       </main>
     );
   }
@@ -220,7 +179,9 @@ function Page() {
 }
 
 createRoot(document.getElementById("root")).render(
-  <AuthProvider>
-    {page === "login" ? <Page /> : <ProtectedPage />}
-  </AuthProvider>,
+  page === "login" ? <Page /> : (
+    <AuthProvider>
+      <ProtectedPage />
+    </AuthProvider>
+  ),
 );

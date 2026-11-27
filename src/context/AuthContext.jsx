@@ -5,6 +5,7 @@ import { hasVenuePermission, resolveIdentityPermissions } from "./identity-permi
 
 const AuthContext = createContext({
   user: null,
+  sessionStatus: "checking",
   access: null,
   accessError: false,
   ...resolveIdentityPermissions(null),
@@ -17,24 +18,37 @@ const AuthContext = createContext({
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [sessionStatus, setSessionStatus] = useState("checking");
   const [access, setAccess] = useState(null);
   const [accessError, setAccessError] = useState(false);
   const [loading, setLoading] = useState(true);
   const identityID = useRef(null);
+  const requestInFlight = useRef(false);
   const [accessRequest, setAccessRequest] = useState({ background: false });
   const reloadAccess = useCallback(({ background = false } = {}) => {
+    if (background && requestInFlight.current) return;
     if (!background) {
       setAccess(null);
       setAccessError(false);
       setLoading(true);
+      setSessionStatus(current => current === "unavailable" ? "checking" : current);
     }
     setAccessRequest({ background });
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
+    requestInFlight.current = true;
+
+    function redirectToLogin() {
+      setUser(null);
+      setAccess(null);
+      setSessionStatus("redirecting");
+      window.location.replace("/login");
+    }
 
     async function loadIdentity() {
+      let identityLoaded = false;
       try {
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
           credentials: "include",
@@ -44,20 +58,21 @@ export function AuthProvider({ children }) {
 
         if (controller.signal.aborted) return;
         if (response.status === 401 || response.status === 403) {
-          setUser(null);
-          setAccess(null);
-          if (identityID.current !== null || accessRequest.background) {
-            window.location.replace("/login");
-          }
+          redirectToLogin();
           return;
         }
         if (!response.ok) throw new Error("Identity unavailable");
         const identity = await response.json();
         if (controller.signal.aborted) return;
-        if (identityID.current !== null && identityID.current !== identity.id) {
+        const sameIdentity = identityID.current === identity.id;
+        if (!sameIdentity) {
           setAccess(null);
           setLoading(true);
         }
+        identityID.current = identity.id;
+        identityLoaded = true;
+        setUser(identity);
+        setSessionStatus("authenticated");
 
         const accessResponse = await fetch(`${API_BASE_URL}/auth/access`, {
           credentials: "include",
@@ -66,18 +81,13 @@ export function AuthProvider({ children }) {
         });
         if (controller.signal.aborted) return;
         if (accessResponse.status === 401 || accessResponse.status === 403) {
-          setUser(null);
-          setAccess(null);
-          window.location.replace("/login");
+          redirectToLogin();
           return;
         }
         if (!accessResponse.ok) throw new Error("Access unavailable");
         const userAccess = await accessResponse.json();
         if (controller.signal.aborted) return;
 
-        const sameIdentity = identityID.current === identity.id;
-        identityID.current = identity.id;
-        setUser(identity);
         setAccessError(false);
         // Go returns permissions in a stable order. Retain the existing snapshot
         // when it matches so dependent views do not refetch their data.
@@ -87,9 +97,16 @@ export function AuthProvider({ children }) {
         if (!controller.signal.aborted) {
           setAccess(null);
           setAccessError(true);
+          if (!identityLoaded) {
+            setUser(null);
+            setSessionStatus("unavailable");
+          }
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          requestInFlight.current = false;
+          setLoading(false);
+        }
       }
     }
 
@@ -111,6 +128,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        sessionStatus,
         access,
         accessError,
         role,
