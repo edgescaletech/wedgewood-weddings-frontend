@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { API_BASE_URL } from "../../config.js";
 import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "../../context/identity-permissions.js";
+import LogoutDialog from "../LogoutDialog.jsx";
 
 export default function AppHeader({
   venues = [],
@@ -17,32 +17,13 @@ export default function AppHeader({
   isBeoView = false,
   onBackToSchedule,
 }) {
-  const { hasVenuePermission, access } = useAuth();
+  const { user, hasVenuePermission, access } = useAuth();
   const canPublishADP = hasVenuePermission(currentVenue?.id, "schedules.publish");
   const canViewGoals = hasVenuePermission(currentVenue?.id, "labor_goals.view");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [logoutStatus, setLogoutStatus] = useState("idle");
   const moreMenuRef = useRef(null);
   const moreButtonRef = useRef(null);
   const logoutDialogRef = useRef(null);
-
-  async function logOut() {
-    if (logoutStatus === "pending") return;
-    setLogoutStatus("pending");
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (response.ok || response.status === 401) {
-        window.location.replace("/login");
-        return;
-      }
-    } catch {
-      // Keep the menu action available when the connection fails.
-    }
-    setLogoutStatus("failed");
-  }
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -227,53 +208,28 @@ export default function AppHeader({
                 <span style={{ color: "#dc2626" }}>Prototype controls</span>
                 <span className="menu-arrow">›</span>
               </button>
+              <a href="/about/" className="more-menu-item" role="menuitem">
+                <span className="menu-account-name">
+                  {user?.displayName?.trim() || user?.email || "My profile"}
+                </span>
+                <span className="menu-arrow" aria-hidden="true">›</span>
+              </a>
               <button
                 type="button"
                 className="more-menu-item"
                 role="menuitem"
                 onClick={() => {
-                  setLogoutStatus("idle");
                   setShowMoreMenu(false);
                   logoutDialogRef.current.showModal();
                 }}
               >
-                <span>Log out</span>
+                Log out
               </button>
             </div>
           )}
         </div>
       </div>
-      <dialog
-        ref={logoutDialogRef}
-        className="staffing-logout-dialog"
-        aria-labelledby="staffing-logout-title"
-        onCancel={(event) => {
-          if (logoutStatus === "pending") event.preventDefault();
-        }}
-        onClose={() => moreButtonRef.current?.focus()}
-      >
-        <h2 id="staffing-logout-title">Are you sure you want to log out?</h2>
-        {logoutStatus === "failed" && (
-          <p role="alert">Couldn’t log out. Please try again.</p>
-        )}
-        <div className="staffing-logout-actions">
-          <button
-            type="button"
-            autoFocus
-            disabled={logoutStatus === "pending"}
-            onClick={() => logoutDialogRef.current.close()}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={logoutStatus === "pending"}
-            onClick={logOut}
-          >
-            {logoutStatus === "pending" ? "Logging out…" : "Log out"}
-          </button>
-        </div>
-      </dialog>
+      <LogoutDialog dialogRef={logoutDialogRef} onClose={() => moreButtonRef.current?.focus()} />
     </header>
   );
 }

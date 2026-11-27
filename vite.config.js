@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const projectDir = dirname(fileURLToPath(import.meta.url));
 
 const pageEntries = {
+  '/about': '/about/index.html',
   '/invite': '/invite/index.html',
   '/staffing': '/staffing/index.html',
   '/staffing.html': '/staffing/index.html',
@@ -56,6 +57,7 @@ export default defineConfig({
         resetPassword: resolve(projectDir, 'reset-password/index.html'),
         staffing: resolve(projectDir, 'staffing/index.html'),
         goals: resolve(projectDir, 'goals/index.html'),
+        profile: resolve(projectDir, 'about/index.html'),
         laborTargets: resolve(projectDir, 'admin/labor-targets.html'),
       },
     },
