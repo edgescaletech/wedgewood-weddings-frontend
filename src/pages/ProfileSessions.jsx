@@ -23,7 +23,14 @@ const devices = [
 function deviceLabel(agent = "") {
   const browser = browsers.find(([pattern]) => pattern.test(agent))?.[1];
   const device = devices.find(([pattern]) => pattern.test(agent))?.[1];
-  return [browser, device].filter(Boolean).join(" on ") || "Unknown device";
+  return [browser, device].filter(Boolean).join(" on ");
+}
+
+function sessionLabel(session) {
+  if (session.current) {
+    return deviceLabel(session.userAgent) || deviceLabel(navigator.userAgent) || "Current browser";
+  }
+  return deviceLabel(session.userAgent) || "Other session";
 }
 
 const sessionDate = new Intl.DateTimeFormat(undefined, {
@@ -89,7 +96,7 @@ export default function ProfileSessions() {
           {result.sessions.map(session => (
             <li key={session.id}>
               <div>
-                <strong>{deviceLabel(session.userAgent)}</strong>
+                <strong>{sessionLabel(session)}</strong>
                 {Number.isFinite(Date.parse(session.createdAt)) && (
                   <p>Signed in <time dateTime={session.createdAt}>{sessionDate.format(new Date(session.createdAt))}</time></p>
                 )}
