@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { API_BASE_URL } from '../config.js';
+import AdminHeader from '../components/Header/AdminHeader.jsx';
+import { transformTargetsToVenuesData } from '../utils/goals-transform.js';
 import styles from './admin-goals.css?inline';
 
 export { styles };
@@ -7,17 +9,19 @@ export { styles };
 const apiBase = API_BASE_URL || '';
 const LABOR_TARGETS_URL = `${apiBase}/api/admin/labor-goals/upload`;
 const ACCOUNTING_PERIODS_URL = `${apiBase}/api/admin/accounting-periods/upload`;
+const VENUES_URL = `${apiBase}/api/venues`;
+const TARGETS_URL = `${apiBase}/api/labor-goals/targets`;
 
 
 // Sample template CSV for Wedgewood venues
-const CSV_TEMPLATE = `Venue,Month,Basis,FOH guests per labor hour,BOH guests per labor hour
-Boulder Ridge,2027-01,2027 forecast,2.23,3.51
-Boulder Ridge,2027-02,2027 forecast,2.22,3.69
-Carmel Fields,2027-01,2027 forecast,2.33,4.04
-Eagle Ridge,2027-01,2027 forecast,2.69,4.33
-Clayton House,2027-01,2027 forecast,2.50,3.82
-Galway Downs,2027-01,2027 forecast,2.15,3.76
-Fallbrook Estate,2027-01,2027 forecast,2.44,5.83`;
+const CSV_TEMPLATE = `Venue,Month,FOH guests per labor hour,BOH guests per labor hour
+Boulder Ridge,2027-01,2.23,3.51
+Boulder Ridge,2027-02,2.22,3.69
+Carmel Fields,2027-01,2.33,4.04
+Eagle Ridge,2027-01,2.69,4.33
+Clayton House,2027-01,2.50,3.82
+Galway Downs,2027-01,2.15,3.76
+Fallbrook Estate,2027-01,2.44,5.83`;
 
 // Sample template CSV for Wedgewood 4-4-5 Accounting Periods
 const ACCOUNTING_PERIODS_TEMPLATE = `Year,Period Number,Period Key,Month Name,Start Date,End Date,Weeks Count,Days Count
@@ -193,10 +197,17 @@ export default function AdminGoalsPage() {
   const [showPaste, setShowPaste] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [pastedCSV, setPastedCSV] = useState('');
-  const [activeTab, setActiveTab] = useState('month'); // '12m', '12w', 'month'
-  const [selectedRegion, setSelectedRegion] = useState('CA Bay Area');
+  const [activeTab, setActiveTab] = useState('12m'); // '12m', '3m', '1m', 'custom'
+  const [selectedYear, setSelectedYear] = useState(2026);
+  const [selectedRegion, setSelectedRegion] = useState('All regions');
   const [selectedVenue, setSelectedVenue] = useState('all');
+  const [dataSource, setDataSource] = useState('live'); // 'live' or 'examples'
   const [expandedDetails, setExpandedDetails] = useState({});
+
+  // Dynamic DB state
+  const [dbVenues, setDbVenues] = useState([]);
+  const [dbTargets, setDbTargets] = useState([]);
+  const [loadingTargets, setLoadingTargets] = useState(false);
 
   // Upload type: 'labor_targets' or 'accounting_periods'
   const [uploadType, setUploadType] = useState('labor_targets');
@@ -213,6 +224,48 @@ export default function AdminGoalsPage() {
   const activeFilename = uploadType === 'labor_targets'
     ? 'wedgewood_labor_goals_template.csv'
     : 'wedgewood_accounting_periods_template.csv';
+
+  // ── Load Venues from API ──────────────────────────────────────────────────
+  async function loadVenues() {
+    try {
+      const res = await fetch(VENUES_URL, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.venues && Array.isArray(data.venues)) {
+          setDbVenues(data.venues);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load venues:', e);
+    }
+  }
+
+  // ── Load Targets from API ─────────────────────────────────────────────────
+  async function loadTargets() {
+    setLoadingTargets(true);
+    try {
+      const url = `${TARGETS_URL}?year=${selectedYear}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.targets && Array.isArray(data.targets)) {
+          setDbTargets(data.targets);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load targets:', e);
+    } finally {
+      setLoadingTargets(false);
+    }
+  }
+
+  useEffect(() => {
+    loadVenues();
+  }, []);
+
+  useEffect(() => {
+    loadTargets();
+  }, [selectedYear]);
 
   const handleSwitchUploadType = (type) => {
     setUploadType(type);
@@ -254,6 +307,9 @@ export default function AdminGoalsPage() {
         setUploadError(`Backend returned an empty response. Please check that the backend is running ('cd backend && make run').`);
       } else {
         setUploadResult(json);
+        // Refresh targets and venues dynamically right after upload
+        loadTargets();
+        loadVenues();
         setImportHistory(prev => [
           {
             ts: new Date().toLocaleString(),
@@ -306,48 +362,174 @@ export default function AdminGoalsPage() {
     setShowPaste(true);
   };
 
-  // Filter venues
-  const filteredVenues = INITIAL_VENUES_DATA.filter(v => {
-    if (selectedRegion !== 'All regions' && v.region !== selectedRegion) return false;
-    if (selectedVenue !== 'all' && v.id !== selectedVenue) return false;
-    return true;
-  });
+  // Track expanders independently per venue (default open)
+  const [expandedPeriodDetails, setExpandedPeriodDetails] = useState({});
+  const [expandedFinanceTargets, setExpandedFinanceTargets] = useState({});
+
+  const togglePeriodDetails = (venueId) => {
+    setExpandedPeriodDetails(prev => ({
+      ...prev,
+      [venueId]: prev[venueId] === undefined ? false : !prev[venueId]
+    }));
+  };
+
+  const toggleFinanceTargets = (venueId) => {
+    setExpandedFinanceTargets(prev => ({
+      ...prev,
+      [venueId]: prev[venueId] === undefined ? false : !prev[venueId]
+    }));
+  };
+
+  // ── Group and transform DB targets into cards ───────────────────────────
+  const dynamicVenuesData = useMemo(() => {
+    if (dataSource === 'examples') {
+      return INITIAL_VENUES_DATA;
+    }
+    return transformTargetsToVenuesData(dbTargets, selectedYear);
+  }, [dbTargets, dataSource, selectedYear]);
+
+  // Dynamic available regions
+  const availableRegions = useMemo(() => {
+    const list = dataSource === 'examples'
+      ? INITIAL_VENUES_DATA.map(v => v.region)
+      : (dynamicVenuesData.length > 0
+          ? dynamicVenuesData.map(v => v.region)
+          : dbVenues.map(v => v.region));
+    const unique = Array.from(new Set(list.filter(Boolean))).sort();
+    return ['All regions', ...unique];
+  }, [dynamicVenuesData, dbVenues, dataSource]);
+
+  // Available venues for dropdown
+  const availableVenues = useMemo(() => {
+    const source = dataSource === 'examples'
+      ? INITIAL_VENUES_DATA
+      : (dynamicVenuesData.length > 0 ? dynamicVenuesData : dbVenues);
+    if (selectedRegion === 'All regions') return source;
+    return source.filter(v => v.region === selectedRegion);
+  }, [dynamicVenuesData, dbVenues, selectedRegion, dataSource]);
+
+  // Filtered venues to display
+  // ── Compute which months to show based on the active pill tab ────────────
+  // The Wedgewood year runs Nov (prior year) – Oct (selected year).
+  // Month numbers here are 1-based calendar months (Jan=1 … Dec=12).
+  // periodDetailsRows for a year are built Jan–Dec (months 1–12).
+  //
+  // "Last 12 months" = all 12 months (default, no filtering)
+  // "Last 3 months"  = last 3 months that have *any* data (result or target)
+  // "Last month"     = last 1 month that has any data
+  // "custom"         = all months (until a date picker is wired)
+  const monthWindow = useMemo(() => {
+    // Returns a Set of monthNums (1-12) that should be visible.
+    // null = show all.
+    if (activeTab === '12m' || activeTab === 'custom' || activeTab === 'month') {
+      return null; // show all 12 months
+    }
+
+    // Determine the latest month index (1-12) to anchor "Last 3 months" or "Last month".
+    // 1) Find the latest month that has any Actual/Forecast/Target in dynamicVenuesData
+    let maxMonthWithData = 0;
+    for (const v of dynamicVenuesData) {
+      if (v.periodDetailsRows) {
+        for (const r of v.periodDetailsRows) {
+          if (r.fohResult != null || r.fohTarget != null) {
+            if (r.monthNum > maxMonthWithData) {
+              maxMonthWithData = r.monthNum;
+            }
+          }
+        }
+      }
+    }
+
+    // If no data found yet, default to October (month 10) for 2026/2027 Wedgewood calendar, or current month
+    const anchorMonth = maxMonthWithData > 0 ? maxMonthWithData : (new Date().getMonth() + 1);
+
+    if (activeTab === '1m') {
+      return new Set([anchorMonth]);
+    }
+    if (activeTab === '3m') {
+      const months = new Set();
+      for (let i = 0; i < 3; i++) {
+        let m = anchorMonth - i;
+        if (m >= 1 && m <= 12) {
+          months.add(m);
+        }
+      }
+      return months;
+    }
+    return null;
+  }, [activeTab, dynamicVenuesData]);
+
+  // Filtered venues to display — also slices chart/table data by monthWindow
+  const venuesToDisplay = useMemo(() => {
+    let base;
+    if (dataSource === 'examples') {
+      base = INITIAL_VENUES_DATA;
+    } else if (dynamicVenuesData.length > 0) {
+      base = dynamicVenuesData;
+    } else {
+      base = INITIAL_VENUES_DATA;
+    }
+
+    base = base.filter(v => {
+      if (selectedRegion !== 'All regions' && v.region !== selectedRegion) return false;
+      if (selectedVenue !== 'all' && v.id !== selectedVenue) return false;
+      return true;
+    });
+
+    // Apply monthWindow slice to chart and table rows
+    if (monthWindow === null) return base;
+
+    return base.map(v => {
+      if (!v.periodDetailsRows) return v;
+      const filteredRows = v.periodDetailsRows.filter(r => monthWindow.has(r.monthNum));
+      const filteredFoh = (v.fohChartPoints || []).filter(p => monthWindow.has(p.idx + 1));
+      const filteredBoh = (v.bohChartPoints || []).filter(p => monthWindow.has(p.idx + 1));
+      // Re-index so the chart x-positions are contiguous
+      return {
+        ...v,
+        periodDetailsRows: filteredRows,
+        fohChartPoints: filteredFoh.map((p, i) => ({ ...p, idx: i })),
+        bohChartPoints: filteredBoh.map((p, i) => ({ ...p, idx: i })),
+      };
+    });
+  }, [dynamicVenuesData, selectedRegion, selectedVenue, dataSource, monthWindow]);
+
+
+
 
 
 
   return (
     <div className="admin-goals-body">
       {/* Top App Header */}
-      <header className="admin-header">
-        <div className="admin-header-left">
-          <div className="brand-wrapper">
-            <div className="admin-brand-logo">W</div>
-            <div className="brand-text-block">
-              <span className="brand-title-main">Wedgewood</span>
-              <span className="brand-sub-scheduling">Scheduling</span>
-            </div>
-          </div>
-
-          <nav className="admin-nav-tabs">
-            <a href="/staffing" className="admin-nav-item">Venues</a>
-            <span className="admin-nav-item">Users & access</span>
-            <span className="admin-nav-item active">Labor efficiency targets</span>
-          </nav>
-        </div>
-
-        <div className="admin-header-right">
-          <div className="user-profile-block">
-            <div className="user-name">Dana Scully</div>
-            <div className="user-role-label">Regional Manager · Admin</div>
-          </div>
-        </div>
-      </header>
-
-      {/* Demo Controls Bar */}
-      <div className="demo-controls-bar">
-        <span className="demo-pill">▶ Demo controls</span>
-        <span>Regional Manager · Fictional data</span>
-      </div>
+      <AdminHeader
+        activeTab="labor_targets"
+        rightControls={
+          <>
+            <span style={{ color: '#6b7280', fontWeight: '600', fontSize: '12px' }}>Year:</span>
+            {[2026, 2027].map(yr => (
+              <button
+                key={yr}
+                type="button"
+                onClick={() => setSelectedYear(yr)}
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                  border: '1px solid',
+                  borderColor: selectedYear === yr ? '#166534' : '#d1d5db',
+                  background: selectedYear === yr ? '#166534' : '#ffffff',
+                  color: selectedYear === yr ? '#ffffff' : '#374151',
+                  fontWeight: selectedYear === yr ? '700' : '400',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                {yr}
+              </button>
+            ))}
+          </>
+        }
+      />
 
       <main className="admin-container">
         {/* Title & Action Row */}
@@ -417,8 +599,16 @@ export default function AdminGoalsPage() {
               </div>
             )}
             {uploadResult && (
-              <div style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '6px', marginBottom: '8px', fontSize: '13px' }}>
-                <strong>✓ Import complete</strong> — {uploadResult.imported} row{uploadResult.imported !== 1 ? 's' : ''} imported
+              <div style={{
+                background: uploadResult.skipped > 0 ? '#fffbeb' : '#dcfce7',
+                border: uploadResult.skipped > 0 ? '1px solid #fde68a' : '1px solid #bbf7d0',
+                color: uploadResult.skipped > 0 ? '#92400e' : '#166534',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                marginBottom: '8px',
+                fontSize: '13px'
+              }}>
+                <strong>{uploadResult.skipped > 0 ? '⚠ Imported with warnings' : '✓ Import complete'}</strong> — {uploadResult.imported} row{uploadResult.imported !== 1 ? 's' : ''} imported
                 {uploadResult.skipped > 0 && `, ${uploadResult.skipped} skipped`}.
                 {uploadResult.errors?.length > 0 && (
                   <details style={{ marginTop: '6px' }}>
@@ -548,7 +738,7 @@ export default function AdminGoalsPage() {
           </section>
         )}
 
-        {/* Time Tabs */}
+        {/* Time Tabs - Exactly matching Prototype Screenshot 1 */}
         <div className="time-tabs-row">
           <button
             type="button"
@@ -559,36 +749,43 @@ export default function AdminGoalsPage() {
           </button>
           <button
             type="button"
-            className={`time-tab-pill ${activeTab === '12w' ? 'active' : ''}`}
-            onClick={() => setActiveTab('12w')}
+            className={`time-tab-pill ${activeTab === '3m' ? 'active' : ''}`}
+            onClick={() => setActiveTab('3m')}
           >
-            Last 12 weeks
+            Last 3 months
           </button>
           <button
             type="button"
-            className={`time-tab-pill ${activeTab === 'month' ? 'active' : ''}`}
-            onClick={() => setActiveTab('month')}
+            className={`time-tab-pill ${activeTab === '1m' ? 'active' : ''}`}
+            onClick={() => setActiveTab('1m')}
           >
             Last month
           </button>
+          <button
+            type="button"
+            className={`time-tab-pill ${activeTab === 'custom' ? 'active' : ''}`}
+            onClick={() => setActiveTab('custom')}
+          >
+            Custom Date Range
+          </button>
         </div>
 
-        {/* Filters Card */}
-        <div className="filters-bar-card">
+        {/* Filters Card - Exactly 2 clean dropdown columns matching Prototype Screenshot 1 */}
+        <div className="filters-bar-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           <div className="filter-field-group">
             <label className="filter-label" htmlFor="filter-region">Region</label>
             <select
               id="filter-region"
               className="filter-select"
               value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
+              onChange={(e) => {
+                setSelectedRegion(e.target.value);
+                setSelectedVenue('all');
+              }}
             >
-              <option value="All regions">All regions</option>
-              <option value="CA Bay Area">CA Bay Area</option>
-              <option value="Arizona">Arizona</option>
-              <option value="CA Central">CA Central</option>
-              <option value="CA Southern">CA Southern</option>
-              <option value="Texas">Texas</option>
+              {availableRegions.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
             </select>
           </div>
 
@@ -600,145 +797,241 @@ export default function AdminGoalsPage() {
               value={selectedVenue}
               onChange={(e) => setSelectedVenue(e.target.value)}
             >
-              <option value="all">All venues in view</option>
-              {INITIAL_VENUES_DATA.map(v => (
-                <option key={v.id} value={v.id}>{v.name}</option>
+              <option value="all">All venues in region</option>
+              {availableVenues.map(v => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
               ))}
             </select>
-          </div>
-
-          <div className="filter-field-group">
-            <label className="filter-label" htmlFor="filter-data-source">Data source</label>
-            <select id="filter-data-source" className="filter-select">
-              <option>Illustrative examples</option>
-              <option>Live targets</option>
-            </select>
-          </div>
-
-          <div className="filter-field-group">
-            <label className="filter-label" htmlFor="filter-as-of">As of</label>
-            <input
-              id="filter-as-of"
-              type="text"
-              className="filter-input-date"
-              defaultValue="17/11/2026"
-            />
           </div>
         </div>
 
         {/* Region Section */}
         <section className="region-section">
           <div className="region-section-header">
-            <h2 className="region-heading">{selectedRegion}</h2>
-            <div className="region-meta-sub">
-              {filteredVenues.length} venue{filteredVenues.length === 1 ? '' : 's'} · Last completed accounting month and four most recent completed weeks · Oct 5 – Nov 15, 2026
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 className="region-heading">{selectedRegion}</h2>
+              {loadingTargets && <span style={{ fontSize: '13px', color: '#166534' }}>Loading live targets…</span>}
             </div>
-            <div className="region-illustrative-note">
-              Illustrative data. Results and targets in this view are examples.
+            <div className="region-meta-sub">
+              {venuesToDisplay.length} venue{venuesToDisplay.length === 1 ? '' : 's'} ·{' '}
+              {selectedYear === 2026
+                ? `Jan ${selectedYear} – Dec ${selectedYear} · Actual & Forecast`
+                : `Nov ${selectedYear - 1} – Oct ${selectedYear} · Finance targets`}
             </div>
 
-            <div className="region-legend">
-              <span className="legend-item">
-                <span className="legend-dot-above">●</span> At or above target
+            <div className="region-legend" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px', margin: '10px 0 6px 0', fontSize: '12px' }}>
+              <span style={{ background: '#dcfce7', color: '#166534', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>
+                At or above target
               </span>
-              <span className="legend-item">
-                <span className="legend-dot-below">▼</span> Below target
+              <span style={{ background: '#fee2e2', color: '#b91c1c', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>
+                Below target
               </span>
-              <span className="legend-item">
-                <span className="legend-line-target">----</span> Target
-              </span>
+              <span>● Actual</span>
+              <span>◆ Forecast</span>
+              <span>○ Estimated</span>
+              <span>---- Target</span>
+              <span style={{ color: '#6b7280' }}>...... Estimated target</span>
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#6b7280', margin: '4px 0 16px 0' }}>
+              Finance reports actuals by accounting month. Hollow points show estimates. The {selectedYear} target line uses Finance’s hours at target. Gaps indicate an unavailable target.
             </div>
           </div>
 
           {/* Venue Cards */}
           <div className="venue-cards-grid">
-            {filteredVenues.map((venue) => {
-              const isDetailsOpen = !!expandedDetails[venue.id];
+            {venuesToDisplay.map((venue) => {
+              const isPeriodDetailsOpen = expandedPeriodDetails[venue.id] !== false; // default open
+              const isFinanceTargetsOpen = expandedFinanceTargets[venue.id] !== false; // default open
+
               return (
                 <article key={venue.id} className="venue-card">
-                  <div className="venue-card-top">
-                    <h3 className="venue-name-heading">{venue.name}</h3>
-                    <span className="venue-region-tag">{venue.region}</span>
+                  {/* Card Top: Venue Name (left), Region (right) */}
+                  <div className="venue-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px', marginBottom: '16px' }}>
+                    <h3 className="venue-name-heading" style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#111827' }}>
+                      {venue.name}
+                    </h3>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                      {venue.region}
+                    </span>
                   </div>
 
-                  <div className="venue-departments-row">
+                  {/* FOH and BOH Columns */}
+                  <div className="venue-departments-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
                     {/* Front of House */}
                     <div className="dept-column">
-                      <div className="dept-header-line">
-                        <span className="dept-title">Front of house</span>
-                        <span className="dept-badge">FOH</span>
+                      <div className="dept-header-line" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#374151' }}>Front of house</span>
+                        <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>FOH</span>
                       </div>
-                      <div className="metric-main-val">{venue.foh.actual.toFixed(2)}</div>
-                      <div className="metric-period-label">{venue.asOf}</div>
-                      <div className="metric-target-reference">Example target {venue.foh.target.toFixed(2)}</div>
-                      <div className={`status-badge-diff ${venue.foh.isAbove ? 'above' : 'below'}`}>
-                        {venue.foh.diff}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '20px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ fontSize: venue.fohActualStr === 'Not available' ? '14px' : '26px', fontWeight: venue.fohActualStr === 'Not available' ? '600' : '800', color: venue.fohActualStr === 'Not available' ? '#6b7280' : '#111827' }}>
+                            {venue.fohActualStr}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>
+                            Actual{venue.latestActualMonth && venue.latestActualMonth !== '—' ? ` · ${venue.latestActualMonth}` : ''}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: venue.fohForecastStr === 'Not available' ? '14px' : '26px', fontWeight: venue.fohForecastStr === 'Not available' ? '600' : '800', color: venue.fohForecastStr === 'Not available' ? '#6b7280' : '#111827' }}>
+                            {venue.fohForecastStr}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>
+                            Forecast{venue.latestForecastMonth && venue.latestForecastMonth !== '—' ? ` · ${venue.latestForecastMonth}` : ''}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="sparkline-container">
-                        <div className="sparkline-title">Last 4 completed weeks</div>
-                        <TrendSparkline weeks={venue.foh.weeks} target={venue.foh.target} minVal={2.0} maxVal={4.0} />
-                      </div>
+                      {/* FOH Prototype Chart */}
+                      <PrototypeTrendChart
+                        points={venue.fohChartPoints}
+                        target={venue.fohTargetAvg}
+                        minVal={1.5}
+                        maxVal={4.5}
+                        yTicks={[4.5, 3.5, 2.5, 1.5]}
+                      />
                     </div>
 
                     {/* Back of House */}
                     <div className="dept-column">
-                      <div className="dept-header-line">
-                        <span className="dept-title">Back of house</span>
-                        <span className="dept-badge">BOH</span>
+                      <div className="dept-header-line" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#374151' }}>Back of house</span>
+                        <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600' }}>BOH</span>
                       </div>
-                      <div className="metric-main-val">{venue.boh.actual.toFixed(2)}</div>
-                      <div className="metric-period-label">{venue.asOf}</div>
-                      <div className="metric-target-reference">Example target {venue.boh.target.toFixed(2)}</div>
-                      <div className={`status-badge-diff ${venue.boh.isAbove ? 'above' : 'below'}`}>
-                        {venue.boh.diff}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '20px', marginBottom: '12px' }}>
+                        <div>
+                          <span style={{ fontSize: venue.bohActualStr === 'Not available' ? '14px' : '26px', fontWeight: venue.bohActualStr === 'Not available' ? '600' : '800', color: venue.bohActualStr === 'Not available' ? '#6b7280' : '#111827' }}>
+                            {venue.bohActualStr}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>
+                            Actual{venue.latestActualMonth && venue.latestActualMonth !== '—' ? ` · ${venue.latestActualMonth}` : ''}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: venue.bohForecastStr === 'Not available' ? '14px' : '26px', fontWeight: venue.bohForecastStr === 'Not available' ? '600' : '800', color: venue.bohForecastStr === 'Not available' ? '#6b7280' : '#111827' }}>
+                            {venue.bohForecastStr}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>
+                            Forecast{venue.latestForecastMonth && venue.latestForecastMonth !== '—' ? ` · ${venue.latestForecastMonth}` : ''}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="sparkline-container">
-                        <div className="sparkline-title">Last 4 completed weeks</div>
-                        <TrendSparkline weeks={venue.boh.weeks} target={venue.boh.target} minVal={3.0} maxVal={6.0} />
-                      </div>
+                      {/* BOH Prototype Chart */}
+                      <PrototypeTrendChart
+                        points={venue.bohChartPoints}
+                        target={venue.bohTargetAvg}
+                        minVal={2.0}
+                        maxVal={10.0}
+                        yTicks={[10.0, 7.33, 4.67, 2.0]}
+                      />
                     </div>
                   </div>
 
-                  {/* Period Details Expander */}
-                  <div className="period-details-expander">
+                  {/* Table 1: Period details */}
+                  <div style={{ marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
                     <button
                       type="button"
                       className="expander-btn"
-                      onClick={() => toggleDetails(venue.id)}
+                      onClick={() => togglePeriodDetails(venue.id)}
                     >
-                      <span>{isDetailsOpen ? '▼' : '▶'}</span>
-                      <span>Period details</span>
+                      <span style={{ fontSize: '11px' }}>{isPeriodDetailsOpen ? '▼' : '▶'}</span>
+                      <span style={{ fontWeight: '700', fontSize: '13px', color: '#111827' }}>Period details</span>
                     </button>
 
-                    {isDetailsOpen && (
+                    {isPeriodDetailsOpen && (
                       <table className="period-details-table">
                         <thead>
                           <tr>
-                            <th>Week</th>
-                            <th>FOH Target</th>
-                            <th>FOH Actual</th>
-                            <th>BOH Target</th>
-                            <th>BOH Actual</th>
+                            <th rowSpan="2" className="col-period" style={{ verticalAlign: 'bottom' }}>PERIOD</th>
+                            <th colSpan="3">FOH</th>
+                            <th colSpan="3">BOH</th>
+                          </tr>
+                          <tr>
+                            <th>RESULT</th>
+                            <th>TARGET</th>
+                            <th>GAP</th>
+                            <th>RESULT</th>
+                            <th>TARGET</th>
+                            <th>GAP</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {venue.foh.weeks.map((w, idx) => (
-                            <tr key={w.label}>
-                              <td>{w.label}</td>
-                              <td>{w.target.toFixed(2)}</td>
-                              <td style={{ color: w.actual >= w.target ? '#15803d' : '#ea580c', fontWeight: 'bold' }}>
-                                {w.actual.toFixed(2)}
-                              </td>
-                              <td>{venue.boh.weeks[idx].target.toFixed(2)}</td>
-                              <td style={{ color: venue.boh.weeks[idx].actual >= venue.boh.weeks[idx].target ? '#15803d' : '#ea580c', fontWeight: 'bold' }}>
-                                {venue.boh.weeks[idx].actual.toFixed(2)}
-                              </td>
-                            </tr>
-                          ))}
+                          {venue.periodDetailsRows ? (
+                            venue.periodDetailsRows.map((row) => (
+                              <tr key={row.period}>
+                                <td className="col-period">
+                                  {row.period}
+                                  {row.isEstimate && <span style={{ fontSize: '10px', color: '#6b7280', marginLeft: '3px' }}>Est.</span>}
+                                  {row.isForecast && <span style={{ fontSize: '10px', color: '#6b7280', marginLeft: '3px' }}>Fcst</span>}
+                                </td>
+                                <td>{row.fohResult != null ? row.fohResult.toFixed(2) : '—'}</td>
+                                <td>{row.fohTarget != null ? row.fohTarget.toFixed(2) : '—'}</td>
+                                <td className={row.fohGap != null ? (row.fohGap >= 0 ? 'gap-cell-positive' : 'gap-cell-negative') : ''}>
+                                  {row.fohGap != null ? `${row.fohGap >= 0 ? '+' : ''}${row.fohGap.toFixed(2)}` : '—'}
+                                </td>
+                                <td>{row.bohResult != null ? row.bohResult.toFixed(2) : '—'}</td>
+                                <td>{row.bohTarget != null ? row.bohTarget.toFixed(2) : '—'}</td>
+                                <td className={row.bohGap != null ? (row.bohGap >= 0 ? 'gap-cell-positive' : 'gap-cell-negative') : ''}>
+                                  {row.bohGap != null ? `${row.bohGap >= 0 ? '+' : ''}${row.bohGap.toFixed(2)}` : '—'}
+                                </td>
+                              </tr>
+                            ))
+                          ) : null}
                         </tbody>
                       </table>
+                    )}
+                  </div>
+
+                  {/* Table 2: Finance hours at target */}
+                  <div className="finance-hours-section">
+                    <button
+                      type="button"
+                      className="expander-btn"
+                      onClick={() => toggleFinanceTargets(venue.id)}
+                    >
+                      <span style={{ fontSize: '11px' }}>{isFinanceTargetsOpen ? '▼' : '▶'}</span>
+                      <span style={{ fontWeight: '700', fontSize: '13px', color: '#111827' }}>
+                        {selectedYear} Finance hours at target · {venue.name}
+                      </span>
+                    </button>
+
+                    {isFinanceTargetsOpen && (
+                      <div style={{ marginTop: '8px' }}>
+                        <div className="finance-hours-subtitle">
+                          Banquet LE is guests per labor hour.
+                        </div>
+                        <table className="finance-hours-table">
+                          <thead>
+                            <tr>
+                              <th>Period</th>
+                              <th className="col-num">FOH LE</th>
+                              <th className="col-num">BOH LE</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {venue.monthlyFinanceRows ? (
+                              venue.monthlyFinanceRows.map((m) => (
+                                <tr key={m.monthNum}>
+                                  <td>{m.monthName}</td>
+                                  <td className="col-num">{m.foh != null ? m.foh.toFixed(2) : '—'}</td>
+                                  <td className="col-num">{m.boh != null ? m.boh.toFixed(2) : '—'}</td>
+                                </tr>
+                              ))
+                            ) : null}
+                            <tr className="total-row">
+                              <td>Full year</td>
+                              <td className="col-num">{venue.annualFOHTarget != null ? venue.annualFOHTarget.toFixed(2) : '—'}</td>
+                              <td className="col-num">{venue.annualBOHTarget != null ? venue.annualBOHTarget.toFixed(2) : '—'}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div className="finance-hours-footnote">
+                          Source: Finance’s {selectedYear} hours at target. A dash marks a value Finance left blank.
+                        </div>
+                      </div>
                     )}
                   </div>
                 </article>
@@ -751,71 +1044,113 @@ export default function AdminGoalsPage() {
   );
 }
 
-// Sparkline SVG helper
-function TrendSparkline({ weeks, target, minVal, maxVal }) {
-  const width = 280;
-  const height = 80;
-  const paddingX = 30;
-  const paddingY = 15;
+// ── Prototype Trend Chart with Y-axis markers and dots ───────────────────────
+function PrototypeTrendChart({ points = [], target = null, minVal = 1.5, maxVal = 4.5, yTicks = [4.5, 3.5, 2.5, 1.5] }) {
+  const width = 420;
+  const height = 130;
+  const paddingLeft = 38;
+  const paddingRight = 16;
+  const paddingTop = 12;
+  const paddingBottom = 26;
 
   const getY = (val) => {
+    if (val == null) return null;
     const clamped = Math.max(minVal, Math.min(maxVal, val));
     const ratio = (clamped - minVal) / (maxVal - minVal);
-    return height - paddingY - ratio * (height - 2 * paddingY);
+    return height - paddingBottom - ratio * (height - paddingTop - paddingBottom);
   };
 
   const getX = (idx) => {
-    return paddingX + (idx / (weeks.length - 1)) * (width - 2 * paddingX);
+    if (points.length <= 1) return paddingLeft;
+    return paddingLeft + (idx / (points.length - 1)) * (width - paddingLeft - paddingRight);
   };
 
-  const targetY = getY(target);
-  const pointsString = weeks.map((w, idx) => `${getX(idx)},${getY(w.actual)}`).join(' ');
+  const targetY = target != null ? getY(target) : null;
+  const validPoints = points.filter(p => p.val != null);
+  const polylineStr = validPoints.map(p => `${getX(p.idx)},${getY(p.val)}`).join(' ');
 
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
-      {/* Target dashed line */}
-      <line
-        x1={paddingX}
-        y1={targetY}
-        x2={width - paddingX}
-        y2={targetY}
-        stroke="#6b7280"
-        strokeWidth="1.5"
-        strokeDasharray="4 3"
-      />
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible', fontVariantNumeric: 'tabular-nums' }}>
+      {/* Y-axis Ticks & Horizontal lines */}
+      {yTicks.map(t => {
+        const y = getY(t);
+        return (
+          <g key={t}>
+            <text x={paddingLeft - 8} y={y + 3.5} textAnchor="end" fontSize="10" fill="#6b7280">
+              {t.toFixed(t % 1 === 0 ? 0 : 2)}
+            </text>
+            <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+          </g>
+        );
+      })}
 
-      {/* Actual connected line */}
-      <polyline
-        fill="none"
-        stroke="#2d5a3c"
-        strokeWidth="2"
-        points={pointsString}
-      />
+      {/* Target dashed line — only drawn when an official target is provided */}
+      {targetY != null && (
+        <line
+          x1={paddingLeft}
+          y1={targetY}
+          x2={width - paddingRight}
+          y2={targetY}
+          stroke="#374151"
+          strokeWidth="1.5"
+          strokeDasharray="4 3"
+        />
+      )}
+
+      {/* Missing data state when actual performance data is not yet available */}
+      {validPoints.length === 0 && (
+        <text
+          x={(width + paddingLeft - paddingRight) / 2}
+          y={(height - paddingBottom + paddingTop) / 2}
+          textAnchor="middle"
+          fontSize="11"
+          fill="#9ca3af"
+        >
+          Actual performance data not available
+        </text>
+      )}
+
+      {/* Connecting line */}
+      {polylineStr && (
+        <polyline
+          fill="none"
+          stroke="#2d5a3c"
+          strokeWidth="1.8"
+          points={polylineStr}
+        />
+      )}
 
       {/* Data points */}
-      {weeks.map((w, idx) => {
+      {points.map((p, idx) => {
         const cx = getX(idx);
-        const cy = getY(w.actual);
-        const isAbove = w.actual >= w.target;
+        if (p.val == null) {
+          return (
+            <text key={idx} x={cx} y={height - 6} textAnchor="middle" fontSize="9" fill="#9ca3af">
+              {p.label.split(' ')[0]}
+            </text>
+          );
+        }
+        const cy = getY(p.val);
+        const isAbove = target != null ? p.val >= target : true;
+        const isForecast = p.isForecast;
 
         return (
-          <g key={w.label}>
-            {isAbove ? (
-              <circle cx={cx} cy={cy} r="4.5" fill="#15803d" stroke="#ffffff" strokeWidth="1" />
-            ) : (
+          <g key={idx}>
+            {isForecast ? (
+              // Distinct Diamond for forecast
               <polygon
-                points={`${cx},${cy - 5} ${cx - 5},${cy + 4} ${cx + 5},${cy + 4}`}
-                fill="#ea580c"
+                points={`${cx},${cy - 5.5} ${cx + 5},${cy} ${cx},${cy + 5.5} ${cx - 5},${cy}`}
+                fill={isAbove ? '#15803d' : '#b91c1c'}
+                stroke="#ffffff"
+                strokeWidth="1.2"
               />
+            ) : isAbove ? (
+              <circle cx={cx} cy={cy} r="3.5" fill="#15803d" stroke="#ffffff" strokeWidth="1" />
+            ) : (
+              <circle cx={cx} cy={cy} r="3.5" fill="#b91c1c" stroke="#ffffff" strokeWidth="1" />
             )}
-            <text
-              x={cx}
-              y={height - 2}
-              textAnchor="middle"
-              fontSize="9"
-              fill="#6b7280"
-            >
-              {w.label}
+            <text x={cx} y={height - 6} textAnchor="middle" fontSize="9" fill="#6b7280">
+              {p.label.split(' ')[0]}
             </text>
           </g>
         );

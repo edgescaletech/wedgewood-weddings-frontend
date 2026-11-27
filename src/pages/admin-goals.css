@@ -591,17 +591,108 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  margin-top: 8px;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
 }
 
 .period-details-table th, .period-details-table td {
-  padding: 6px 10px;
-  text-align: left;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
 }
 
 .period-details-table th {
-  font-weight: 600;
-  color: #4b5563;
+  font-weight: 700;
+  color: #1e3a1e;
+  background: #eef6f0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.period-details-table th.col-period {
+  text-align: left;
+}
+
+.period-details-table td.col-period {
+  text-align: left;
+  font-weight: 500;
+  color: #111827;
+}
+
+.period-details-table td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #374151;
+}
+
+.gap-cell-positive {
+  color: #166534;
+  font-weight: 700;
+  background-color: #f0fdf4;
+}
+
+.gap-cell-negative {
+  color: #b91c1c;
+  font-weight: 700;
+  background-color: #fef2f2;
+}
+
+/* Finance Hours at Target Table */
+.finance-hours-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.finance-hours-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.finance-hours-subtitle {
+  font-size: 11.5px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.finance-hours-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.finance-hours-table th, .finance-hours-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.finance-hours-table th {
+  background: #eef6f0;
+  color: #1e3a1e;
+  font-weight: 700;
+  font-size: 11px;
+  text-align: left;
+}
+
+.finance-hours-table th.col-num, .finance-hours-table td.col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.finance-hours-table tr.total-row {
+  font-weight: 800;
   background: #f9fafb;
+  border-top: 2px solid #e5e7eb;
+  color: #111827;
+}
+
+.finance-hours-footnote {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
 }
