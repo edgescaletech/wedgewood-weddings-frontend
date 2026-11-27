@@ -1,97 +1,155 @@
-import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { API_BASE_URL as apiBase } from "./config.js";
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import Staffing, { styles as staffingStyles } from './pages/staffing.jsx';
-import Goals, { styles as goalsStyles } from './pages/goals.jsx';
-import AdminGoals, { styles as adminGoalsStyles } from './pages/admin-goals.jsx';
-import Venues, { styles as venuesStyles } from './pages/venues.jsx';
-import Login from './pages/login.jsx';
-import '../style.css';
+import React, { useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import Staffing, { styles as staffingStyles } from "./pages/staffing.jsx";
+import Goals, { styles as goalsStyles } from "./pages/goals.jsx";
+import Profile from "./pages/profile.jsx";
+import AdminDashboard from "./admin/AdminDashboard.jsx";
+import { adminPageForPath } from "./admin/navigation.js";
+import Login from "./pages/login.jsx";
+import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "./context/identity-permissions.js";
+import "../style.css";
 
 const pages = {
+  admin: [AdminDashboard, ""],
   staffing: [Staffing, staffingStyles],
   goals: [Goals, goalsStyles],
-  adminGoals: [AdminGoals, adminGoalsStyles],
-  venues: [Venues, venuesStyles],
+  profile: [Profile, ""],
   login: [Login, ""],
 };
 
 function getPage() {
+  const legacyAdminPath = window.location.hash === "#venues" ? "/venues"
+    : window.location.hash === "#admin-goals" ? "/admin/labor-targets" : null;
+  if (legacyAdminPath) {
+    history.replaceState(history.state, "", `${legacyAdminPath}${location.search}`);
+  }
   const path = window.location.pathname;
-  if (['/login', '/login/', '/login/index.html', '/reset-password', '/reset-password/', '/reset-password/index.html'].includes(path)) {
-    return 'login';
+  if (adminPageForPath(path)) return "admin";
+  if (["/about", "/about/", "/about/index.html"].includes(path)) return "profile";
+  if (
+    [
+      "/login",
+      "/login/",
+      "/login/index.html",
+      "/reset-password",
+      "/reset-password/",
+      "/reset-password/index.html",
+    ].includes(path)
+  ) {
+    return "login";
   }
-  if (['/venues', '/venues/', '/venues/index.html'].includes(path) || window.location.hash === '#venues') {
-    return 'venues';
-  }
-  if (['/admin-goals', '/admin-goals/', '/admin-goals.html', '/admin/goals', '/admin/goals/'].includes(path) || window.location.hash === '#admin-goals') {
-    return 'adminGoals';
-  }
-  if (['/goals', '/goals/', '/goals.html'].includes(path)) {
-    if (path !== '/goals') {
-      history.replaceState(history.state, '', `/goals${location.search}${location.hash}`);
+  if (["/goals", "/goals/", "/goals.html"].includes(path)) {
+    if (path !== "/goals") {
+      history.replaceState(
+        history.state,
+        "",
+        `/goals${location.search}${location.hash}`,
+      );
     }
-    return 'goals';
+    return "goals";
   }
   // Default route: go directly to staffing schedule matching client prototype
-  if (path !== '/staffing') {
-    history.replaceState(history.state, '', `/staffing${location.search}${location.hash}`);
+  if (path !== "/staffing") {
+    history.replaceState(
+      history.state,
+      "",
+      `/staffing${location.search}${location.hash}`,
+    );
   }
-  return 'staffing';
+  return "staffing";
 }
 
 const page = getPage();
+const initialAdminPage = adminPageForPath(window.location.pathname);
+const isAdminPage = page === "admin";
 
 // Check the server session before rendering application components.
 function ProtectedPage() {
-  const [status, setStatus] = useState('checking');
-  const [attempt, setAttempt] = useState(0);
+  const { user, sessionStatus, access, accessError, loading: accessLoading, reloadAccess } = useAuth();
+  const canOpenAdminPage = ["laborTargets", "venues"].includes(initialAdminPage)
+    ? hasLaborTargetsAccess(access)
+    : hasAdminDashboardAccess(access);
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    async function checkSession() {
-      try {
-        const response = await fetch(`${apiBase}/auth/me`, {
-          credentials: 'include',
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        if (response.status === 401 || response.status === 403) {
-          window.location.replace('/login');
-          return;
-        }
-        setStatus(response.ok ? 'authenticated' : 'unavailable');
-      } catch (error) {
-        if (error.name !== 'AbortError') setStatus('unavailable');
-      }
+    function revalidateSession() {
+      reloadAccess({ background: true });
     }
 
-    checkSession();
-    return () => controller.abort();
-  }, [attempt]);
+    function checkRestoredSession(event) {
+      if (event.persisted) revalidateSession();
+    }
 
-  if (status === 'authenticated') return <Page />;
-  if (status === 'unavailable') {
+    window.addEventListener("focus", revalidateSession);
+    window.addEventListener("pageshow", checkRestoredSession);
+    window.addEventListener("popstate", revalidateSession);
+    return () => {
+      window.removeEventListener("focus", revalidateSession);
+      window.removeEventListener("pageshow", checkRestoredSession);
+      window.removeEventListener("popstate", revalidateSession);
+    };
+  }, [reloadAccess]);
+
+  useEffect(() => {
+    if (
+      isAdminPage &&
+      sessionStatus === "authenticated" &&
+      !accessLoading &&
+      !accessError &&
+      !canOpenAdminPage
+    ) {
+      window.location.replace("/staffing/");
+    }
+  }, [accessError, accessLoading, canOpenAdminPage, sessionStatus]);
+
+  if (sessionStatus === "authenticated" && isAdminPage) {
+    if (accessLoading) {
+      return (
+        <main role="status" style={{ padding: "24px", textAlign: "center" }}>
+          Checking Admin access…
+        </main>
+      );
+    }
+    if (accessError || !access) {
+      return (
+        <main role="alert" style={{ padding: "24px", textAlign: "center" }}>
+          Unable to check your Admin access. {" "}
+          <button onClick={() => window.location.reload()}>Try again</button>
+        </main>
+      );
+    }
+    if (!canOpenAdminPage) {
+      return (
+        <main role="status" style={{ padding: "24px", textAlign: "center" }}>
+          Returning to your work dashboard…
+        </main>
+      );
+    }
+  }
+
+  if (sessionStatus === "authenticated") return <Page key={user.id} />;
+  if (sessionStatus === "redirecting") return null;
+  if (sessionStatus === "unavailable") {
     return (
-      <main role="alert" style={{ padding: '24px', textAlign: 'center' }}>
-        Unable to check your session.{' '}
-        <button onClick={() => { setStatus('checking'); setAttempt(attempt + 1); }}>
-          Try again
-        </button>
+      <main role="alert" style={{ padding: "24px", textAlign: "center" }}>
+        Unable to check your session.{" "}
+        <button onClick={() => reloadAccess()}>Try again</button>
       </main>
     );
   }
-  return <main role="status" style={{ padding: '24px', textAlign: 'center' }}>Checking your session…</main>;
+  return (
+    <main role="status" style={{ padding: "24px", textAlign: "center" }}>
+      Checking your session…
+    </main>
+  );
 }
 
 function Page() {
-  const [Content, css] = pages[page] || pages['staffing'];
+  const [Content, css] = pages[page] || pages["staffing"];
 
   useEffect(() => {
-    const styleNodes = (css ? [css] : []).map(cssText => {
-      const node = document.createElement('style');
+    const styleNodes = (css ? [css] : []).map((cssText) => {
+      const node = document.createElement("style");
       node.dataset.reactPageStyle = page;
       node.textContent = cssText;
       document.head.appendChild(node);
@@ -99,14 +157,14 @@ function Page() {
     });
 
     let cancelled = false;
-    if (page === 'login' || page === 'staffing' || page === 'adminGoals' || page === 'venues') {
-      return () => styleNodes.forEach(node => node.remove());
+    if (page !== "goals") {
+      return () => styleNodes.forEach((node) => node.remove());
     }
 
     const startController = async () => {
       try {
-        if (page === 'goals') {
-          const controller = await import('./legacy/goals.js');
+        if (page === "goals") {
+          const controller = await import("./legacy/goals.js");
           if (!cancelled) controller.mount();
         }
       } catch (error) {
@@ -117,19 +175,21 @@ function Page() {
 
     return () => {
       cancelled = true;
-      styleNodes.forEach(node => node.remove());
+      styleNodes.forEach((node) => node.remove());
     };
   }, [page, css]);
 
   return (
     <div className={`react-page react-page-${page}`}>
-      <Content />
+      {isAdminPage ? <AdminDashboard initialPage={initialAdminPage} /> : <Content />}
     </div>
   );
 }
 
-createRoot(document.getElementById('root')).render(
-  <AuthProvider>
-    {page === 'login' ? <Page /> : <ProtectedPage />}
-  </AuthProvider>
+createRoot(document.getElementById("root")).render(
+  page === "login" ? <Page /> : (
+    <AuthProvider>
+      <ProtectedPage />
+    </AuthProvider>
+  ),
 );

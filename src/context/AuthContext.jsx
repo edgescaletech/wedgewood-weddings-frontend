@@ -1,89 +1,145 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config.js';
+import React, { createContext, useCallback, useContext, useRef, useState, useEffect } from "react";
+import { API_BASE_URL } from "../config.js";
 
-// Default permissions for General Manager (GM) based on client role matrix
-const GM_PERMISSIONS = {
-  view_schedule: true,
-  compare_labor_goals: true,
-  edit_schedule: true,
-  review_approval: true,
-  publish_adp: true,
-  send_adp_changes: true,
-  manage_users: false, // Admin only
-  update_labor_goals: false, // Admin only
-};
+import { hasVenuePermission, resolveIdentityPermissions } from "./identity-permissions.js";
 
 const AuthContext = createContext({
   user: null,
-  role: 'General manager (GM)',
-  permissions: GM_PERMISSIONS,
-  hasPermission: () => true,
-  isRole: () => true,
+  sessionStatus: "checking",
+  access: null,
+  accessError: false,
+  ...resolveIdentityPermissions(null),
+  hasPermission: () => false,
+  hasVenuePermission: () => false,
+  reloadAccess: () => {},
+  isRole: () => false,
   loading: true,
 });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState('General manager (GM)');
-  const [permissions, setPermissions] = useState(GM_PERMISSIONS);
+  const [sessionStatus, setSessionStatus] = useState("checking");
+  const [access, setAccess] = useState(null);
+  const [accessError, setAccessError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const identityID = useRef(null);
+  const requestInFlight = useRef(false);
+  const [accessRequest, setAccessRequest] = useState({ background: false });
+  const reloadAccess = useCallback(({ background = false } = {}) => {
+    if (background && requestInFlight.current) return;
+    if (!background) {
+      setAccess(null);
+      setAccessError(false);
+      setLoading(true);
+      setSessionStatus(current => current === "unavailable" ? "checking" : current);
+    }
+    setAccessRequest({ background });
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    requestInFlight.current = true;
+
+    function redirectToLogin() {
+      setUser(null);
+      setAccess(null);
+      setSessionStatus("redirecting");
+      window.location.replace("/login");
+    }
 
     async function loadIdentity() {
+      let identityLoaded = false;
       try {
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          credentials: 'include',
-          cache: 'no-store',
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal,
         });
 
+        if (controller.signal.aborted) return;
         if (response.status === 401 || response.status === 403) {
-          setUser(null);
+          redirectToLogin();
           return;
         }
+        if (!response.ok) throw new Error("Identity unavailable");
+        const identity = await response.json();
+        if (controller.signal.aborted) return;
+        const sameIdentity = identityID.current === identity.id;
+        if (!sameIdentity) {
+          setAccess(null);
+          setLoading(true);
+        }
+        identityID.current = identity.id;
+        identityLoaded = true;
+        setUser(identity);
+        setSessionStatus("authenticated");
 
-        if (response.ok) {
-          const data = await response.json();
-          if (cancelled) return;
-          setUser(data);
+        const accessResponse = await fetch(`${API_BASE_URL}/auth/access`, {
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (accessResponse.status === 401 || accessResponse.status === 403) {
+          redirectToLogin();
+          return;
+        }
+        if (!accessResponse.ok) throw new Error("Access unavailable");
+        const userAccess = await accessResponse.json();
+        if (controller.signal.aborted) return;
 
-          // If role/permissions are returned by the backend, use them.
-          // Otherwise fall back to General manager (GM) as per client specification.
-          if (data.role && data.role.trim() !== '') {
-            setRole(data.role);
-            if (data.permissions && Array.isArray(data.permissions)) {
-              const permMap = {};
-              data.permissions.forEach(p => { permMap[p] = true; });
-              setPermissions(permMap);
-            }
-          } else {
-            // Default to General manager (GM)
-            setRole('General manager (GM)');
-            setPermissions(GM_PERMISSIONS);
+        setAccessError(false);
+        // Go returns permissions in a stable order. Retain the existing snapshot
+        // when it matches so dependent views do not refetch their data.
+        setAccess(previous => accessRequest.background && sameIdentity &&
+          JSON.stringify(previous) === JSON.stringify(userAccess) ? previous : userAccess);
+      } catch {
+        if (!controller.signal.aborted) {
+          setAccess(null);
+          setAccessError(true);
+          if (!identityLoaded) {
+            setUser(null);
+            setSessionStatus("unavailable");
           }
         }
-      } catch (err) {
-        console.warn('Unable to load user session, continuing with GM defaults:', err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) {
+          requestInFlight.current = false;
+          setLoading(false);
+        }
       }
     }
 
     loadIdentity();
-    return () => { cancelled = true; };
-  }, []);
+    return () => controller.abort();
+  }, [accessRequest]);
+
+  const { role, permissions } = resolveIdentityPermissions(user);
 
   const hasPermission = (permissionKey) => {
     return Boolean(permissions[permissionKey]);
   };
 
   const isRole = (roleName) => {
-    return role.toLowerCase() === roleName.toLowerCase();
+    return Boolean(role) && role.toLowerCase() === roleName.toLowerCase();
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, permissions, hasPermission, isRole, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        sessionStatus,
+        access,
+        accessError,
+        role,
+        permissions,
+        hasPermission,
+        hasVenuePermission: (venueId, permission) => hasVenuePermission(access, venueId, permission),
+        reloadAccess,
+        isRole,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

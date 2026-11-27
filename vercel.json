@@ -1,5 +1,88 @@
 {
+  "headers": [
+    {
+      "source": "/invite/:path*",
+      "headers": [
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/venues",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/venues/",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/venues/index.html",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin-goals",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin-goals/",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin-goals.html",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin/goals",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin/goals/",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/about/index.html"
+    },
+    {
+      "source": "/staffing",
+      "destination": "/staffing/index.html"
+    },
+    {
+      "source": "/staffing.html",
+      "destination": "/staffing/index.html"
+    },
+    {
+      "source": "/goals",
+      "destination": "/goals/index.html"
+    },
+    {
+      "source": "/goals.html",
+      "destination": "/goals/index.html"
+    },
+    {
+      "source": "/invite",
+      "destination": "/invite/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/users.html"
+    },
+    {
+      "source": "/admin/labor-targets",
+      "destination": "/admin/labor-targets.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/admin/users.html"
+    },
     {
       "source": "/api/:path*",
       "destination": "https://wedgewood-dev-api.onrender.com/api/:path*"

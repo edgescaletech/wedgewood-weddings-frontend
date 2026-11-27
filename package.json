@@ -7,13 +7,19 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:local": "node tests/run-e2e.mjs local",
+    "test:e2e:staging": "node tests/run-e2e.mjs staging"
   },
   "dependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "vite": "^6.0.0"
   }
 }

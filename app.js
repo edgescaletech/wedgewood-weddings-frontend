@@ -120,23 +120,12 @@ function formatBar(evt) {
 // API Calls
 // ============================================================================
 
-async function fetchWeeklyEvents(monday, forceRefresh = false) {
+async function fetchWeeklyEvents(monday) {
   state.isLoading = true;
   renderSidebarLoading();
 
-  const syncBtn = document.getElementById('btn-sync-sf');
-  const syncIcon = document.getElementById('sync-icon');
-  const syncText = document.getElementById('sync-text');
-  if (syncBtn && forceRefresh) {
-    syncBtn.disabled = true;
-    if (syncIcon) syncIcon.textContent = '⏳';
-    if (syncText) syncText.textContent = 'Syncing...';
-  }
-
   const isoWeek = toISODate(monday);
-  const url = forceRefresh 
-    ? `${API_BASE_URL}/api/events?week=${isoWeek}&refresh=true` 
-    : `${API_BASE_URL}/api/events?week=${isoWeek}`;
+  const url = `${API_BASE_URL}/api/events?week=${isoWeek}`;
 
   try {
     const response = await fetch(url, { credentials: 'include' });
@@ -164,23 +153,9 @@ async function fetchWeeklyEvents(monday, forceRefresh = false) {
 
     renderUI();
 
-    if (syncBtn && forceRefresh) {
-      if (syncIcon) syncIcon.textContent = '✓';
-      if (syncText) syncText.textContent = 'Synced!';
-      setTimeout(() => {
-        syncBtn.disabled = false;
-        if (syncIcon) syncIcon.textContent = '🔄';
-        if (syncText) syncText.textContent = 'Sync from SF';
-      }, 1800);
-    }
   } catch (err) {
     console.error('Failed to load events:', err);
     renderSidebarError(err.message);
-    if (syncBtn && forceRefresh) {
-      syncBtn.disabled = false;
-      if (syncIcon) syncIcon.textContent = '⚠️';
-      if (syncText) syncText.textContent = 'Sync failed';
-    }
   } finally {
     state.isLoading = false;
   }
@@ -1095,13 +1070,6 @@ function setupEventListeners() {
       }
       clearBtn.style.display = 'none';
       renderSidebarEvents();
-    });
-  }
-
-  const syncBtn = document.getElementById('btn-sync-sf');
-  if (syncBtn) {
-    syncBtn.addEventListener('click', () => {
-      fetchWeeklyEvents(state.currentMonday, true);
     });
   }
 

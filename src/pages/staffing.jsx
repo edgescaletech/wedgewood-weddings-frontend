@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../config.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { hasVenuePermission } from '../context/identity-permissions.js';
 import AppHeader from '../components/Header/AppHeader.jsx';
 import StatusBanner from '../components/Schedule/StatusBanner.jsx';
 import LaborGoalsAccordion from '../components/Schedule/LaborGoalsAccordion.jsx';
@@ -51,20 +52,31 @@ function shiftWeek(weekStart, amount) {
 }
 
 export default function StaffingPage() {
-  const { hasPermission } = useAuth();
+  const { access, loading: accessLoading, accessError, reloadAccess } = useAuth();
+  const deniedEventIds = useRef(new Set());
 
   // URL parameters initialization
   const urlParams = new URLSearchParams(window.location.search);
   const initialWeekParam = urlParams.get('week');
-  const initialEventParam = urlParams.get('eventId');
-  const initialVenueParam = urlParams.get('venueId');
 
   const [weekStart, setWeekStart] = useState(() => getMondayFor(initialWeekParam));
   const [selectedDay, setSelectedDay] = useState('');
   const [weekEvents, setWeekEvents] = useState([]);
-  const [activeEvent, setActiveEvent] = useState(null);
-  const [venues, setVenues] = useState([]);
-  const [currentVenue, setCurrentVenue] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [eventDetails, setEventDetails] = useState(null);
+  const [venueResult, setVenueResult] = useState(null);
+  // Hide previously loaded venues as soon as the underlying grants change.
+  const venues = venueResult?.access === access ? venueResult.venues : null;
+  const [venueError, setVenueError] = useState('');
+  const [eventsError, setEventsError] = useState('');
+  const [eventDetailError, setEventDetailError] = useState('');
+  const [currentVenueId, setCurrentVenueId] = useState('');
+  const currentVenue = venues?.find(venue => venue.id === currentVenueId) ?? null;
+  const matchingDetails = eventDetails?.id === selectedEvent?.id &&
+    eventDetails?.venueId === selectedEvent?.venueId;
+  const activeEvent = currentVenue && selectedEvent?.venueId === currentVenue.id
+    ? (matchingDetails ? eventDetails : selectedEvent)
+    : null;
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [isBeoView, setIsBeoView] = useState(() => window.location.hash === '#beo');
   const [viewMode, setViewMode] = useState('day');
@@ -91,120 +103,149 @@ export default function StaffingPage() {
     setIsBeoView(false);
   }, []);
 
-  // Fetch full details of a specific event
-  const loadEventDetail = useCallback(async (eventId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(eventId)}`, {
-        credentials: 'include',
-      });
-      if (response.status === 401 || response.status === 403) {
-        window.location.replace('/login');
-        return null;
-      }
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    } catch (err) {
-      console.error('Error fetching event details:', err);
-      return null;
-    }
-  }, []);
-
-  // Fetch events for the week and extract venues
-  const fetchWeekEvents = useCallback(async (targetWeek, targetEventId = '') => {
-    setLoading(true);
-    try {
-      const query = new URLSearchParams({ week: targetWeek });
-      const response = await fetch(`${API_BASE_URL}/api/events?${query.toString()}`, {
-        credentials: 'include',
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        window.location.replace('/login');
-        return;
-      }
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const events = data.events || [];
-      setWeekEvents(events);
-
-      // Extract unique venues from all events
-      const venueMap = new Map();
-      events.forEach(e => {
-        const vName = e.venue || 'Unknown Venue';
-        const vId = e.venueId || vName;
-        if (!venueMap.has(vId)) {
-          venueMap.set(vId, { id: vId, name: vName, timezone: e.timezone || 'Central Time' });
+  useEffect(() => {
+    if (!access) return;
+    const controller = new AbortController();
+    setVenueError('');
+    async function loadVenues() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/me/venues`, {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (response.status === 401 || response.status === 403) {
+          window.location.replace('/login');
+          return;
         }
-      });
-      const uniqueVenues = Array.from(venueMap.values());
-      setVenues(uniqueVenues);
-
-      // Determine initial venue
-      let chosenVenue = null;
-      if (initialVenueParam && uniqueVenues.length > 0) {
-        chosenVenue = uniqueVenues.find(v => v.id === initialVenueParam) || null;
-      }
-      if (!chosenVenue && targetEventId && events.length > 0) {
-        const targetEvt = events.find(e => e.id === targetEventId);
-        if (targetEvt) {
-          chosenVenue = uniqueVenues.find(v => (v.id && v.id === targetEvt.venueId) || v.name === targetEvt.venue) || null;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const directory = await response.json();
+        if (!controller.signal.aborted) {
+          setVenueResult({
+            access,
+            venues: directory.filter(venue => hasVenuePermission(access, venue.id, 'schedules.view')),
+          });
         }
+      } catch {
+        if (!controller.signal.aborted) setVenueError('Could not load your venues. Reload the page to try again.');
       }
-      if (!chosenVenue && uniqueVenues.length > 0) {
-        chosenVenue = currentVenue || uniqueVenues[0];
-      }
-      if (chosenVenue) {
-        setCurrentVenue(chosenVenue);
-      }
-
-      // Filter events by chosen venue
-      const venueFiltered = chosenVenue
-        ? events.filter(e => (e.venueId && e.venueId === chosenVenue.id) || e.venue === chosenVenue.name)
-        : events;
-
-      if (venueFiltered.length > 0) {
-        const selected = (targetEventId && venueFiltered.find(e => e.id === targetEventId)) || venueFiltered[0];
-        setSelectedDay(selected.eventDate);
-
-        const details = await loadEventDetail(selected.id);
-        setActiveEvent(details || selected);
-
-        const url = new URL(window.location.href);
-        url.pathname = '/staffing';
-        url.searchParams.set('week', targetWeek);
-        url.searchParams.delete('eventId');
-        if (chosenVenue) url.searchParams.set('venueId', chosenVenue.id);
-        window.history.replaceState({}, '', url);
-      } else {
-        setActiveEvent(null);
-        setSelectedDay(targetWeek);
-      }
-    } catch (err) {
-      console.error('Error loading week events:', err);
-    } finally {
-      setLoading(false);
     }
-  }, [loadEventDetail, initialVenueParam]);
+    loadVenues();
+    return () => controller.abort();
+  }, [access]);
 
   useEffect(() => {
-    fetchWeekEvents(weekStart, initialEventParam);
-  }, [weekStart, fetchWeekEvents, initialEventParam]);
+    if (!venues?.length) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setEventsError('');
+    setWeekEvents([]);
+    setSelectedEvent(null);
 
-  // Venue selection handler: updates current venue, selects its first event, and updates URL
-  const handleVenueChange = (selected) => {
-    setCurrentVenue(selected);
-    const venueEvts = weekEvents.filter(e => (e.venueId && e.venueId === selected.id) || e.venue === selected.name);
-    if (venueEvts.length > 0) {
-      handleSelectEvent(venueEvts[0].id);
-    } else {
-      setActiveEvent(null);
+    async function loadWeek() {
+      try {
+        const query = new URLSearchParams({ week: weekStart });
+        const response = await fetch(`${API_BASE_URL}/api/events?${query}`, {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (response.status === 401) {
+          window.location.replace('/login');
+          return;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const { events: week = [] } = await response.json();
+        if (controller.signal.aborted) return;
+
+        const venueIds = new Set(venues.map(venue => venue.id));
+        const events = week.filter(event => venueIds.has(event.venueId) && !deniedEventIds.current.has(event.id));
+        const url = new URL(window.location.href);
+        const eventId = url.searchParams.get('eventId');
+        const linkedEvent = events.find(event => event.id === eventId);
+        const venue = venues.find(item => item.id === url.searchParams.get('venueId'))
+          ?? venues.find(item => item.id === linkedEvent?.venueId)
+          ?? venues[0];
+        const event = linkedEvent?.venueId === venue.id
+          ? linkedEvent
+          : events.find(item => item.venueId === venue.id);
+
+        setCurrentVenueId(venue.id);
+        setWeekEvents(events);
+        setSelectedEvent(event ?? null);
+        setSelectedDay(event?.eventDate ?? weekStart);
+        url.pathname = '/staffing';
+        url.searchParams.set('week', weekStart);
+        url.searchParams.set('venueId', venue.id);
+        url.searchParams.delete('eventId');
+        window.history.replaceState(window.history.state, '', url);
+      } catch {
+        if (!controller.signal.aborted) setEventsError('Could not load events for this week.');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     }
+
+    loadWeek();
+    return () => controller.abort();
+  }, [venues, weekStart]);
+
+  const selectedEventId = activeEvent?.id;
+  useEffect(() => {
+    setEventDetails(null);
+    if (!selectedEventId) return;
+    const controller = new AbortController();
+    async function loadDetail() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/events/${encodeURIComponent(selectedEventId)}`, {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (response.status === 401) {
+          window.location.replace('/login');
+          return;
+        }
+        if (response.status === 403 || response.status === 404) {
+          // The refreshed list can still contain an event whose detail was denied.
+          deniedEventIds.current.add(selectedEventId);
+          setVenueResult(null);
+          setCurrentVenueId('');
+          setWeekEvents([]);
+          setSelectedEvent(null);
+          setEventDetails(null);
+          setShowEventDetails(false);
+          handleBackToSchedule();
+          setEventDetailError('This event is no longer available.');
+          reloadAccess();
+          return;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const details = await response.json();
+        if (!controller.signal.aborted) setEventDetails(details);
+      } catch (error) {
+        if (!controller.signal.aborted) console.error('Error fetching event details:', error);
+      }
+    }
+    loadDetail();
+    return () => controller.abort();
+  }, [selectedEventId, handleBackToSchedule, reloadAccess]);
+
+  const handleVenueChange = (venue) => {
+    const event = weekEvents.find(item => item.venueId === venue.id);
+    setCurrentVenueId(venue.id);
+    setSelectedEvent(event ?? null);
+    setSelectedDay(event?.eventDate ?? weekStart);
+    setShowEventDetails(false);
+    setEventDetailError('');
     const url = new URL(window.location.href);
     url.pathname = '/staffing';
-    url.searchParams.set('venueId', selected.id);
+    url.searchParams.set('venueId', venue.id);
     url.searchParams.delete('eventId');
-    window.history.replaceState({}, '', url);
+    window.history.replaceState(window.history.state, '', url);
   };
 
   const handlePrevWeek = () => {
@@ -224,32 +265,23 @@ export default function StaffingPage() {
     setWeekStart(getMondayFor(dateString));
   };
 
-  const handleSelectDay = (dateStr) => {
-    setSelectedDay(dateStr);
-    const dayEvts = venueEvents.filter(e => e.eventDate === dateStr);
-    if (dayEvts.length > 0) {
-      handleSelectEvent(dayEvts[0].id);
-    }
-  };
-
-  const handleSelectEvent = async (eventId) => {
-    const details = await loadEventDetail(eventId);
-    const chosen = details || weekEvents.find(e => e.id === eventId);
-    if (chosen) {
-      setActiveEvent(chosen);
-      setSelectedDay(chosen.eventDate);
-
-      const url = new URL(window.location.href);
-      url.pathname = '/staffing';
-      url.searchParams.delete('eventId');
-      window.history.replaceState({}, '', url);
-    }
-  };
-
-  // Filter events by currently selected venue
   const venueEvents = currentVenue
-    ? weekEvents.filter(e => (e.venueId && e.venueId === currentVenue.id) || e.venue === currentVenue.name)
-    : weekEvents;
+    ? weekEvents.filter(event => event.venueId === currentVenue.id)
+    : [];
+
+  const handleSelectDay = (dateStr) => {
+    setEventDetailError('');
+    setSelectedDay(dateStr);
+    setSelectedEvent(venueEvents.find(event => event.eventDate === dateStr) ?? null);
+  };
+
+  const handleSelectEvent = (eventId) => {
+    const event = venueEvents.find(item => item.id === eventId);
+    if (!event) return;
+    setEventDetailError('');
+    setSelectedEvent(event);
+    setSelectedDay(event.eventDate);
+  };
 
   // Filter events for the selected day within this venue
   const dayEvents = selectedDay
@@ -259,7 +291,7 @@ export default function StaffingPage() {
   return (
     <div className="staffing-application-container">
       <AppHeader
-        venues={venues}
+        venues={venues ?? []}
         currentVenue={currentVenue}
         onVenueChange={handleVenueChange}
         weekStart={weekStart}
@@ -281,12 +313,12 @@ export default function StaffingPage() {
         >
           Schedule
         </button>
-        <a href={currentVenue?.id ? `/goals?venueId=${encodeURIComponent(currentVenue.id)}` : '/goals'} className="sub-nav-tab">
-          Goals & budgets
-        </a>
-        <a href="/admin-goals" className="sub-nav-tab" style={{ color: '#166534', fontWeight: 600 }}>
-          Admin: Labor targets
-        </a>
+        {hasVenuePermission(access, currentVenue?.id, 'labor_goals.view') && (
+          <a href={`/goals?venueId=${encodeURIComponent(currentVenue.id)}`} className="sub-nav-tab">
+            Goals & budgets
+          </a>
+        )}
+
         <button
           type="button"
           className="sub-nav-tab"
@@ -305,7 +337,15 @@ export default function StaffingPage() {
         </button>
       </nav>
 
-      {isBeoView ? (
+      {eventDetailError && <p className="workspace-main" role="alert">{eventDetailError}</p>}
+
+      {venueError || accessError || (!accessLoading && !access) || eventsError ? (
+        <p className="workspace-main" role="alert">{venueError || eventsError || 'Could not check your access.'}</p>
+      ) : accessLoading || !venues || (venues.length > 0 && loading) ? (
+        <p className="workspace-main" role="status">Loading schedule…</p>
+      ) : !currentVenue ? (
+        <p className="workspace-main">No venues are available for scheduling.</p>
+      ) : isBeoView && activeEvent ? (
         <BeoPdfModal
           event={activeEvent}
           currentVenue={currentVenue}
@@ -322,8 +362,6 @@ export default function StaffingPage() {
 
           <LaborGoalsAccordion
             venueId={currentVenue?.id || ''}
-            weekDates={formatWeekRange(weekStart)}
-            monthLabel={`This month · ${new Date(`${weekStart}T12:00:00`).toLocaleDateString('en-US', { month: 'long' })}`}
             eventId={activeEvent?.id || ''}
             weekStart={weekStart}
           />
@@ -339,7 +377,8 @@ export default function StaffingPage() {
             onViewModeChange={setViewMode}
           />
 
-          {viewMode === 'day' ? (
+          {venueEvents.length === 0 && <p className="workspace-main">No events scheduled at this venue this week.</p>}
+          {venueEvents.length > 0 && (viewMode === 'day' ? (
             <main className="workspace-main">
               <DayActionBar
                 selectedDate={selectedDay || weekStart}
@@ -357,13 +396,13 @@ export default function StaffingPage() {
                 onClose={() => setShowEventDetails(false)}
               />
 
-              <TimelineGrid activeEvent={activeEvent} />
+              <TimelineGrid activeEvent={activeEvent} venueId={currentVenue?.id} />
             </main>
           ) : (
             <main className="workspace-main">
-              <WeekScheduleGrid weekStart={weekStart} events={venueEvents} />
+              <WeekScheduleGrid weekStart={weekStart} events={venueEvents} venueId={currentVenue?.id} />
             </main>
-          )}
+          ))}
         </>
       )}
     </div>

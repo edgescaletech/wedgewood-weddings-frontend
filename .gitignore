@@ -13,3 +13,12 @@ node_modules/
 .vscode/
 .idea/
 *.log
+
+# Playwright artifacts and local session state
+playwright-report/
+test-results/
+playwright/.auth/
+
+# Public templates for E2E environment configuration
+!.env.e2e.local.example
+!.env.e2e.staging.example

@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { API_BASE_URL } from '../config.js';
-import AdminHeader from '../components/Header/AdminHeader.jsx';
 import CreateRegionModal from '../components/Schedule/CreateRegionModal.jsx';
-import styles from './venues.css?inline';
-import adminGoalsStyles from './admin-goals.css?inline';
+import './venues.css';
 
-export { styles };
 
 const apiBase = API_BASE_URL || '';
 const VENUES_OVERVIEW_URL = `${apiBase}/api/admin/venues-overview`;
@@ -186,8 +183,6 @@ export default function Venues() {
 
   return (
     <div className="venues-page-body admin-goals-body">
-      {/* Shared Admin Header */}
-      <AdminHeader activeTab="venues" />
 
       <main className="venues-container">
         {/* Top Page Row: Title on Left, Week Navigator on Right */}

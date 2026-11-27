@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { API_BASE_URL as apiBase } from "../config.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import styles from "./goals.css?inline";
 
 export { styles };
@@ -37,6 +38,7 @@ const DEFAULT_PERIODS = {
 };
 
 export default function GoalsPage() {
+  const { hasVenuePermission, loading: accessLoading, accessError } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2026");
   const [rows, setRows] = useState(DEFAULT_PERIODS["2026"]);
   const [loading, setLoading] = useState(false);
@@ -44,12 +46,16 @@ export default function GoalsPage() {
   // Read search params
   const searchParams = new URLSearchParams(window.location.search);
   const venueId = searchParams.get("venueId") || "";
+  const canViewGoals = hasVenuePermission(venueId, "labor_goals.view");
+  const [requestError, setRequestError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchTargets() {
+      if (!canViewGoals) return;
       setLoading(true);
+      setRequestError("");
       try {
         const queryParams = new URLSearchParams({ year: selectedYear });
         if (venueId) queryParams.set("venueId", venueId);
@@ -58,6 +64,14 @@ export default function GoalsPage() {
           credentials: 'include',
         });
 
+        if (res.status === 401) {
+          window.location.replace("/login");
+          return;
+        }
+        if (res.status === 403) {
+          if (!cancelled) setRequestError("You do not have permission to view goals for this venue.");
+          return;
+        }
         if (res.ok) {
           const json = await res.json();
           if (!cancelled && json.targets && json.targets.length > 0) {
@@ -94,7 +108,14 @@ export default function GoalsPage() {
 
     fetchTargets();
     return () => { cancelled = true; };
-  }, [selectedYear, venueId]);
+  }, [selectedYear, venueId, canViewGoals]);
+
+  if (accessLoading) return <main role="status">Checking access…</main>;
+  if (accessError) return <main role="alert">Unable to check your access. Reload the page to try again.</main>;
+  if (!venueId) return <main role="alert">Select a venue from the schedule to view its goals.</main>;
+  if (!canViewGoals || requestError) {
+    return <main role="alert">{requestError || "You do not have permission to view goals for this venue."}</main>;
+  }
 
   return (
     <>
@@ -113,7 +134,7 @@ export default function GoalsPage() {
       <nav className={"sub-nav-bar"}>
         <a href={"/staffing"} className={"sub-nav-tab"}>{"Schedule"}</a>
         <div className={"sub-nav-tab active"}>{"Goals & budgets"}</div>
-        <a href={"/admin-goals"} className={"sub-nav-tab"} style={{"color": "#166534", "fontWeight": 600}}>{"Admin: Labor targets"}</a>
+
         <div className={"sub-nav-tab"} style={{"color": "#94a3b8"}}>{"Help, history & sync"}</div>
         <div className={"sub-nav-tab"} style={{"color": "#94a3b8"}}>{"Prototype controls"}</div>
       </nav>

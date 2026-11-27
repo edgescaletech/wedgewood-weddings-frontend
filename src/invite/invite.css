@@ -1,0 +1,103 @@
+.invite-shell {
+  min-height: 100dvh;
+}
+
+.invite-form-pane {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: clamp(16px, 3vh, 28px) clamp(16px, 4vw, 52px);
+  background: #f2f5f1;
+}
+
+.invite-shell .invite-aside h2 {
+  margin: 0;
+}
+
+.invite-layout {
+  width: min(100%, 440px);
+}
+
+.invite-layout > .login-brand {
+  margin: 0 auto 14px;
+}
+
+.invite-shell .invite-card {
+  margin: 0;
+  padding: clamp(18px, 3vw, 26px);
+  border-radius: 12px;
+}
+
+.invite-heading h1 {
+  font-size: clamp(23px, 2.5vw, 27px);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.invite-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #586a60;
+  font-size: 13px;
+}
+
+.invite-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #dce8df;
+  border-top-color: #245f47;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .invite-spinner {
+    animation: invite-spin 0.75s linear infinite;
+  }
+}
+
+@keyframes invite-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.invite-hint {
+  color: #586a60;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.invite-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e3ece5;
+}
+
+.invite-card .invite-identity label {
+  margin-top: 0;
+}
+
+.invite-card .login-form input[readonly] {
+  height: 38px;
+  text-overflow: ellipsis;
+  background: #f3f6f3;
+  color: #41564a;
+}
+
+.invite-hint {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.invite-shell .login-button {
+  min-height: 44px;
+  margin-top: 14px;
+}
+
+.invite-shell :is(a, button, input):focus-visible {
+  outline: 2px solid #245f47;
+  outline-offset: 2px;
+}

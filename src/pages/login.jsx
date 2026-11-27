@@ -1,5 +1,10 @@
 import { API_BASE_URL as apiBase } from "../config.js";
 import React, { useEffect, useState } from "react";
+import { usePasswordStrength } from "../components/usePasswordStrength.js";
+import PasswordChecklist from "../components/PasswordChecklist.jsx";
+import { validatePasswords } from "../components/password-policy.js";
+import NewPasswordField from "../components/NewPasswordField.jsx";
+import { clearResetToken, resumeResetToken } from "./reset-token.js";
 import PasswordInput from "../components/PasswordInput.jsx";
 import "./login.css";
 
@@ -7,20 +12,31 @@ import "./login.css";
 
 // The reset entry page removes the token from the URL before other resources load.
 const isResetPage = window.location.pathname.startsWith("/reset-password");
-const resetToken = window.__passwordResetToken || "";
+let resetToken = isResetPage
+  ? resumeResetToken(window.__passwordResetToken || "", performance.getEntriesByType("navigation")[0]?.type === "reload")
+  : "";
 delete window.__passwordResetToken;
 
 export default function Login() {
-  const [status, setStatus] = useState(isResetPage ? "signed-out" : "checking");
+  const [inviteComplete] = useState(() =>
+    !isResetPage && window.location.hash === "#invite-complete",
+  );
+  const [status, setStatus] = useState(isResetPage || inviteComplete ? "signed-out" : "checking");
   const [view, setView] = useState(isResetPage ? "reset" : "login");
   const [code, setCode] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const strength = usePasswordStrength(view === "reset" && Boolean(resetToken), password);
+  const canResetPassword = !validatePasswords(password, confirmPassword, strength);
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
+    if (inviteComplete) {
+      window.history.replaceState(window.history.state, "", "/login");
+      return undefined;
+    }
     if (isResetPage) return undefined;
     const controller = new AbortController();
     async function checkSession() {
@@ -29,9 +45,12 @@ export default function Login() {
           credentials: "include",
           signal: controller.signal,
         });
-        const nextStatus = response.ok
-          ? "signed-in"
-          : response.status === 403
+        if (response.ok) {
+          window.location.replace("/staffing/");
+          return;
+        }
+        const nextStatus =
+          response.status === 403
             ? "inactive"
             : response.status === 401
               ? "signed-out"
@@ -46,7 +65,7 @@ export default function Login() {
     }
     checkSession();
     return () => controller.abort();
-  }, []);
+  }, [inviteComplete]);
 
   async function signIn(event) {
     event.preventDefault();
@@ -80,7 +99,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) window.location.assign("/");
+      if (account.ok) window.location.replace("/staffing/");
       else if (account.status === 403) setStatus("inactive");
       else {
         setFormError(
@@ -122,7 +141,7 @@ export default function Login() {
       const account = await fetch(`${apiBase}/auth/me`, {
         credentials: "include",
       });
-      if (account.ok) window.location.assign("/");
+      if (account.ok) window.location.replace("/staffing/");
       else if (account.status === 403) {
         setView("login");
         setStatus("inactive");
@@ -163,8 +182,9 @@ export default function Login() {
   async function resetPassword(event) {
     event.preventDefault();
     setFormError("");
-    if (password !== confirmPassword) {
-      setFormError("Passwords do not match.");
+    const error = validatePasswords(password, confirmPassword, strength);
+    if (error) {
+      setFormError(error);
       return;
     }
     setBusy(true);
@@ -178,10 +198,18 @@ export default function Login() {
         setFormError(
           body.error || "Unable to reset your password. Please try again.",
         );
+        if (response.status === 410) {
+          clearResetToken();
+          resetToken = "";
+          setPassword("");
+          setConfirmPassword("");
+        }
         return;
       }
       setPassword("");
       setConfirmPassword("");
+      clearResetToken();
+      resetToken = "";
       setView("reset-complete");
     } catch {
       setFormError("Unable to reach the server. Please try again.");
@@ -190,21 +218,8 @@ export default function Login() {
     }
   }
 
-  async function signOut() {
-    setStatus("signing-out");
-    try {
-      const response = await fetch(`${apiBase}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      setStatus(response.ok ? "signed-out" : "logout-error");
-    } catch {
-      setStatus("logout-error");
-    }
-  }
-
   return (
-    <main className="login-shell">
+    <main className={isResetPage ? "login-shell reset-password-shell" : "login-shell"}>
       <section className="login-main" aria-labelledby="login-title">
         <a
           className="login-brand"
@@ -220,22 +235,26 @@ export default function Login() {
           </span>
         </a>
         <div className="login-content">
-          <div className="login-eyebrow">
-            <span /> TEAM WORKSPACE
-          </div>
-          <h1 id="login-title">
-            A little more room
-            <br />
-            <em>to make it special.</em>
-          </h1>
-          <p className="login-intro">
-            Your week, your team, and every detail in one place. Sign in to get
-            started.
-          </p>
+          {!isResetPage && (
+            <>
+              <div className="login-eyebrow">
+                <span /> TEAM WORKSPACE
+              </div>
+              <h1 id="login-title">
+                A little more room
+                <br />
+                <em>to make it special.</em>
+              </h1>
+              <p className="login-intro">
+                Your week, your team, and every detail in one place. Sign in to get
+                started.
+              </p>
+            </>
+          )}
           <div className="login-card">
             <div className="login-card-heading">
               <div>
-                <h2>
+                <h2 id={isResetPage ? "login-title" : undefined}>
                   {view === "verify"
                     ? "Verify your email"
                     : view === "forgot" || view === "reset-sent"
@@ -346,33 +365,37 @@ export default function Login() {
             ) : view === "reset" ? (
               resetToken ? (
                 <form className="login-form" onSubmit={resetPassword}>
-                  <p className="login-explanation">
-                    Choose a new password for your account.
-                  </p>
                   {formError && (
                     <p className="login-alert" role="alert">
                       {formError}
                     </p>
                   )}
-                  <label htmlFor="new-password">New password</label>
-                  <PasswordInput
+                  <NewPasswordField
                     id="new-password"
-                    autoComplete="new-password"
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    describedBy="reset-password-help"
+                    password={password}
+                    busy={busy}
+                    onChange={setPassword}
+                    onGenerate={(generated) => {
+                      setPassword(generated);
+                      setConfirmPassword(generated);
+                      setFormError("");
+                    }}
                   />
                   <label htmlFor="confirm-password">Confirm new password</label>
                   <PasswordInput
                     id="confirm-password"
                     autoComplete="new-password"
+                    aria-describedby="reset-password-help"
                     required
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
                   />
+                  <PasswordChecklist id="reset-password-help" password={password} confirmation={confirmPassword} strength={strength} />
                   <button
                     className="login-button"
-                    disabled={busy}
+                    disabled={busy || !canResetPassword}
+                    aria-describedby="reset-password-help"
                     type="submit"
                   >
                     {busy ? "Saving…" : "Reset password"}{" "}
@@ -381,8 +404,13 @@ export default function Login() {
                 </form>
               ) : (
                 <div className="login-message" role="alert">
-                  <strong>This reset link is missing its token.</strong>
-                  <p>Request a new password reset link and try again.</p>
+                  <strong>{formError || "Open the password reset link from your email."}</strong>
+                  <button className="login-button" type="button" onClick={() => {
+                    setFormError("");
+                    setView("forgot");
+                  }}>
+                    Request a new reset link
+                  </button>
                   <a className="login-secondary" href="/login/">
                     Back to sign in
                   </a>
@@ -405,35 +433,18 @@ export default function Login() {
                   Contact your administrator to request access to the scheduling
                   workspace.
                 </p>
-                <button className="login-secondary" onClick={signOut}>
-                  Sign out
-                </button>
-              </div>
-            ) : status === "signed-in" ? (
-              <div className="login-message" role="status">
-                <strong>You’re signed in.</strong>
-                <p>Continue to your scheduling workspace.</p>
-                <a className="login-button" href="/">
-                  Continue to workspace <span aria-hidden="true">→</span>
-                </a>
-                 <button className="login-secondary" onClick={signOut}>
-                  Sign out
-                </button>
               </div>
             ) : (
               <>
                 <p className="login-explanation">
-                  Use your Wedgewood account to securely access your workspace.
+                  {inviteComplete
+                    ? "Your password has been created successfully. Sign in to continue."
+                    : "Use your Wedgewood account to securely access your workspace."}
                 </p>
                 {status === "unavailable" && (
                   <p className="login-alert" role="alert">
                     We couldn’t check your account. You can still try signing
                     in.
-                  </p>
-                )}
-                {status === "logout-error" && (
-                  <p className="login-alert" role="alert">
-                    We couldn’t sign you out. Please try again.
                   </p>
                 )}
                 {formError && (
@@ -462,9 +473,7 @@ export default function Login() {
                   <button
                     className="login-button"
                     type="submit"
-                    disabled={
-                      status === "signing-in" || status === "signing-out"
-                    }
+                    disabled={status === "signing-in"}
                   >
                     {status === "signing-in" ? "Signing in…" : "Sign in"}{" "}
                     <span aria-hidden="true">→</span>
@@ -481,14 +490,6 @@ export default function Login() {
                 >
                   Forgot password?
                 </button>
-                <p className="login-help">
-                  Don’t have an account? <a href="/signup/">Create one</a>
-                </p>
-                {status === "logout-error" && (
-                  <button className="login-secondary" onClick={signOut}>
-                    Try signing out again
-                  </button>
-                )}
               </>
             )}
           </div>

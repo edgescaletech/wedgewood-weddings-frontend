@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "../../context/identity-permissions.js";
+import LogoutDialog from "../LogoutDialog.jsx";
 
 export default function AppHeader({
   venues = [],
@@ -15,10 +17,13 @@ export default function AppHeader({
   isBeoView = false,
   onBackToSchedule,
 }) {
-  const { hasPermission } = useAuth();
-  const canPublishADP = hasPermission('publish_adp');
+  const { user, hasVenuePermission, access } = useAuth();
+  const canPublishADP = hasVenuePermission(currentVenue?.id, "schedules.publish");
+  const canViewGoals = hasVenuePermission(currentVenue?.id, "labor_goals.view");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef(null);
+  const moreButtonRef = useRef(null);
+  const logoutDialogRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -27,39 +32,46 @@ export default function AppHeader({
       }
     }
     if (showMoreMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMoreMenu]);
 
   return (
     <header className="app-header">
       <div className="header-left">
-        <div className="brand-logo" title="Wedgewood Scheduling">W</div>
+        <div className="brand-logo" title="Wedgewood Scheduling">
+          W
+        </div>
         <div className="venue-picker-header">
           {venues.length > 1 ? (
             <select
               className="venue-select-dropdown"
-              value={currentVenue?.id || ''}
+              value={currentVenue?.id || ""}
               onChange={(e) => {
-                const selected = venues.find(v => v.id === e.target.value);
+                const selected = venues.find((v) => v.id === e.target.value);
                 if (selected && onVenueChange) onVenueChange(selected);
               }}
               aria-label="Select venue"
             >
-              {venues.map(v => (
-                <option key={v.id} value={v.id}>{v.name}</option>
+              {!currentVenue && <option value="" disabled>Select venue</option>}
+              {venues.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
               ))}
             </select>
           ) : (
             <span className="venue-title" id="active-venue-name">
-              {currentVenue?.name || 'Evergreen Grove'}
+              {currentVenue?.name || venues[0]?.name || "Staffing"}
             </span>
           )}
           <span className="venue-sub">
-            {currentVenue?.timezone ? `Schedule · ${currentVenue.timezone.replace('_', ' ')}` : 'Schedule · Central Time'}
+            {currentVenue?.timezone
+              ? `Schedule · ${currentVenue.timezone.replace("_", " ")}`
+              : "Schedule · Central Time"}
           </span>
         </div>
         {isBeoView && (
@@ -139,35 +151,49 @@ export default function AppHeader({
         )}
         <div className="more-menu-container" ref={moreMenuRef}>
           <button
-            className={`btn-more-options ${showMoreMenu ? 'active' : ''}`}
+            ref={moreButtonRef}
+            className={`btn-more-options ${showMoreMenu ? "active" : ""}`}
             type="button"
             aria-label="More options"
             aria-expanded={showMoreMenu}
-            onClick={() => setShowMoreMenu(prev => !prev)}
+            onClick={() => setShowMoreMenu((prev) => !prev)}
           >
             More ···
           </button>
           {showMoreMenu && (
             <div className="more-dropdown-menu" role="menu">
-              <a
-                href={currentVenue?.id ? `/goals?venueId=${encodeURIComponent(currentVenue.id)}` : '/goals'}
+              {hasAdminDashboardAccess(access) ? (
+                <a href="/admin/users" className="more-menu-item" role="menuitem">
+                  <span>Admin Dashboard</span>
+                  <span className="menu-arrow">›</span>
+                </a>
+              ) : hasLaborTargetsAccess(access) ? (
+                <a href="/admin/labor-targets" className="more-menu-item" role="menuitem">
+                  <span>Labor efficiency targets</span>
+                  <span className="menu-arrow">›</span>
+                </a>
+              ) : null}
+              {canViewGoals && <a
+                href={`/goals?venueId=${encodeURIComponent(currentVenue.id)}`}
                 className="more-menu-item"
                 role="menuitem"
                 onClick={() => setShowMoreMenu(false)}
               >
                 <span>Goals & budgets</span>
                 <span className="menu-arrow">›</span>
-              </a>
+              </a>}
               <button
                 type="button"
                 className="more-menu-item"
                 role="menuitem"
                 onClick={() => {
                   setShowMoreMenu(false);
-                  alert("Help, history & sync (simulated prototype documentation)");
+                  alert(
+                    "Help, history & sync (simulated prototype documentation)",
+                  );
                 }}
               >
-                <span style={{ color: '#dc2626' }}>Help, history & sync</span>
+                <span style={{ color: "#dc2626" }}>Help, history & sync</span>
                 <span className="menu-arrow">›</span>
               </button>
               <button
@@ -179,13 +205,31 @@ export default function AppHeader({
                   alert("Prototype controls (simulated demo options)");
                 }}
               >
-                <span style={{ color: '#dc2626' }}>Prototype controls</span>
+                <span style={{ color: "#dc2626" }}>Prototype controls</span>
                 <span className="menu-arrow">›</span>
+              </button>
+              <a href="/about/" className="more-menu-item" role="menuitem">
+                <span className="menu-account-name">
+                  {user?.displayName?.trim() || user?.email || "My profile"}
+                </span>
+                <span className="menu-arrow" aria-hidden="true">›</span>
+              </a>
+              <button
+                type="button"
+                className="more-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setShowMoreMenu(false);
+                  logoutDialogRef.current.showModal();
+                }}
+              >
+                Log out
               </button>
             </div>
           )}
         </div>
       </div>
+      <LogoutDialog dialogRef={logoutDialogRef} onClose={() => moreButtonRef.current?.focus()} />
     </header>
   );
 }

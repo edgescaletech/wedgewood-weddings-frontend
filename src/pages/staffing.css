@@ -859,6 +859,11 @@
       margin-left: 12px;
     }
 
+    .menu-account-name {
+      max-width: 14rem;
+      overflow-wrap: anywhere;
+    }
+
     .status-banner-strip {
       background: #f0fdf4;
       border-bottom: 1px solid #e2e8f0;
