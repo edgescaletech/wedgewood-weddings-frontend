@@ -16,8 +16,6 @@ export default function CreateRegionModal({
   const [selectedVenueIds, setSelectedVenueIds] = useState(new Set());
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
-
   const filteredVenues = useMemo(() => {
     const q = venueSearch.trim().toLowerCase();
     if (!q) return allVenues;
@@ -26,6 +24,8 @@ export default function CreateRegionModal({
       (v.venueNumber || '').toLowerCase().includes(q)
     );
   }, [allVenues, venueSearch]);
+
+  if (!isOpen) return null;
 
   const toggleVenue = (id) => {
     setSelectedVenueIds(prev => {

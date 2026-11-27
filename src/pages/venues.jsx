@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../config.js';
 import CreateRegionModal from '../components/Schedule/CreateRegionModal.jsx';
 import './venues.css';
@@ -28,17 +28,10 @@ function getMonday(d) {
 }
 
 export default function Venues() {
-  // Current planning week anchor (Monday) - defaults to 2026-11-23 matching prototype
-  const [currentWeekDate, setCurrentWeekDate] = useState(() => {
-    // If today is in 2026, use today, otherwise baseline to Nov 23, 2026
-    const base = new Date();
-    if (base.getFullYear() !== 2026) {
-      return new Date(2026, 10, 23); // Nov 23, 2026
-    }
-    return getMonday(base);
-  });
+  // Keep the current Monday–Sunday planning week in every year.
+  const [currentWeekDate, setCurrentWeekDate] = useState(() => getMonday(new Date()));
 
-  const [selectedRegion, setSelectedRegion] = useState('Arizona');
+  const [selectedRegion, setSelectedRegion] = useState('All regions');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRegionSettings, setShowRegionSettings] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,6 +43,7 @@ export default function Venues() {
   const [allVenues, setAllVenues] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const overviewRequest = useRef(null);
 
   const weekISO = useMemo(() => formatDateISO(currentWeekDate), [currentWeekDate]);
 
@@ -85,6 +79,11 @@ export default function Venues() {
 
   // Load overview table data
   const fetchOverview = useCallback(async () => {
+    overviewRequest.current?.abort();
+    const controller = new AbortController();
+    overviewRequest.current = controller;
+    const isCurrent = () => overviewRequest.current === controller && !controller.signal.aborted;
+    setOverviewData(null);
     setLoading(true);
     setError('');
     try {
@@ -98,18 +97,18 @@ export default function Venues() {
         params.set('search', searchQuery.trim());
       }
 
-      const res = await fetch(`${VENUES_OVERVIEW_URL}?${params.toString()}`, { credentials: 'include' });
+      const res = await fetch(`${VENUES_OVERVIEW_URL}?${params.toString()}`, { credentials: 'include', signal: controller.signal });
       if (res.ok) {
         const data = await res.json();
-        setOverviewData(data);
+        if (isCurrent()) setOverviewData(data);
       } else {
         const errText = await res.text();
-        setError(`Failed to load venues (${res.status}): ${errText}`);
+        if (isCurrent()) setError(`Failed to load venues (${res.status}): ${errText}`);
       }
     } catch (err) {
-      setError(`Network error: ${err.message}`);
+      if (isCurrent()) setError(`Network error: ${err.message}`);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [weekISO, selectedRegion, searchQuery]);
 
@@ -120,6 +119,7 @@ export default function Venues() {
 
   useEffect(() => {
     fetchOverview();
+    return () => overviewRequest.current?.abort();
   }, [fetchOverview]);
 
   // Navigation handlers

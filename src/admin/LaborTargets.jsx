@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { API_BASE_URL } from '../config.js';
 import { transformTargetsToVenuesData } from '../utils/goals-transform.js';
 import './labor-targets.css';
@@ -204,7 +204,9 @@ export default function AdminGoalsPage() {
   // Dynamic DB state
   const [dbVenues, setDbVenues] = useState([]);
   const [dbTargets, setDbTargets] = useState([]);
-  const [loadingTargets, setLoadingTargets] = useState(false);
+  const [loadingTargets, setLoadingTargets] = useState(true);
+  const [targetsError, setTargetsError] = useState('');
+  const targetsRequest = useRef(null);
 
   // Upload type: 'labor_targets' or 'accounting_periods'
   const [uploadType, setUploadType] = useState('labor_targets');
@@ -243,23 +245,27 @@ export default function AdminGoalsPage() {
   }
 
   // ── Load Targets from API ─────────────────────────────────────────────────
-  async function loadTargets() {
+  const loadTargets = useCallback(async () => {
+    targetsRequest.current?.abort();
+    const controller = new AbortController();
+    targetsRequest.current = controller;
+    const isCurrent = () => targetsRequest.current === controller && !controller.signal.aborted;
     setLoadingTargets(true);
+    setTargetsError('');
+    setDbTargets([]);
     try {
       const url = `${TARGETS_URL}?year=${selectedYear}`;
-      const res = await fetch(url, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.targets && Array.isArray(data.targets)) {
-          setDbTargets(data.targets);
-        }
-      }
+      const res = await fetch(url, { credentials: 'include', signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!Array.isArray(data.targets)) throw new Error('Invalid targets response');
+      if (isCurrent()) setDbTargets(data.targets);
     } catch (e) {
-      console.warn('Failed to load targets:', e);
+      if (isCurrent()) setTargetsError('Could not load labor targets. Please try again.');
     } finally {
-      setLoadingTargets(false);
+      if (isCurrent()) setLoadingTargets(false);
     }
-  }
+  }, [selectedYear]);
 
   useEffect(() => {
     loadVenues();
@@ -267,7 +273,8 @@ export default function AdminGoalsPage() {
 
   useEffect(() => {
     loadTargets();
-  }, [selectedYear]);
+    return () => targetsRequest.current?.abort();
+  }, [loadTargets]);
 
   const handleSwitchUploadType = (type) => {
     setUploadType(type);
@@ -464,14 +471,8 @@ export default function AdminGoalsPage() {
 
   // Filtered venues to display — also slices chart/table data by monthWindow
   const venuesToDisplay = useMemo(() => {
-    let base;
-    if (dataSource === 'examples') {
-      base = INITIAL_VENUES_DATA;
-    } else if (dynamicVenuesData.length > 0) {
-      base = dynamicVenuesData;
-    } else {
-      base = INITIAL_VENUES_DATA;
-    }
+    if (dataSource === 'live' && (loadingTargets || targetsError)) return [];
+    let base = dataSource === 'examples' ? INITIAL_VENUES_DATA : dynamicVenuesData;
 
     base = base.filter(v => {
       if (selectedRegion !== 'All regions' && v.region !== selectedRegion) return false;
@@ -495,7 +496,7 @@ export default function AdminGoalsPage() {
         bohChartPoints: filteredBoh.map((p, i) => ({ ...p, idx: i })),
       };
     });
-  }, [dynamicVenuesData, selectedRegion, selectedVenue, dataSource, monthWindow]);
+  }, [dynamicVenuesData, selectedRegion, selectedVenue, dataSource, monthWindow, loadingTargets, targetsError]);
 
 
 
@@ -803,7 +804,7 @@ export default function AdminGoalsPage() {
           <div className="region-section-header">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 className="region-heading">{selectedRegion}</h2>
-              {loadingTargets && <span style={{ fontSize: '13px', color: '#166534' }}>Loading live targets…</span>}
+              {dataSource === 'live' && loadingTargets && <span style={{ fontSize: '13px', color: '#166534' }}>Loading live targets…</span>}
             </div>
             <div className="region-meta-sub">
               {venuesToDisplay.length} venue{venuesToDisplay.length === 1 ? '' : 's'} ·{' '}
@@ -829,6 +830,17 @@ export default function AdminGoalsPage() {
               Finance reports actuals by accounting month. Hollow points show estimates. The {selectedYear} target line uses Finance’s hours at target. Gaps indicate an unavailable target.
             </div>
           </div>
+
+          {dataSource === 'examples' && <p role="status">Example data — these are sample figures.</p>}
+          {dataSource === 'live' && targetsError && (
+            <div role="alert">
+              <p>{targetsError}</p>
+              <button type="button" onClick={loadTargets}>Retry</button>
+            </div>
+          )}
+          {dataSource === 'live' && !loadingTargets && !targetsError && venuesToDisplay.length === 0 && (
+            <p role="status">No labor targets available for the selected year and filters.</p>
+          )}
 
           {/* Venue Cards */}
           <div className="venue-cards-grid">
