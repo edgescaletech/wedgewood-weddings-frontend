@@ -19,6 +19,11 @@ const pages = {
 };
 
 function getPage() {
+  const legacyAdminPath = window.location.hash === "#venues" ? "/venues"
+    : window.location.hash === "#admin-goals" ? "/admin/labor-targets" : null;
+  if (legacyAdminPath) {
+    history.replaceState(history.state, "", `${legacyAdminPath}${location.search}`);
+  }
   const path = window.location.pathname;
   if (adminPageForPath(path)) return "admin";
   if (["/about", "/about/", "/about/index.html"].includes(path)) return "profile";
@@ -62,7 +67,7 @@ const isAdminPage = page === "admin";
 // Check the server session before rendering application components.
 function ProtectedPage() {
   const { user, sessionStatus, access, accessError, loading: accessLoading, reloadAccess } = useAuth();
-  const canOpenAdminPage = initialAdminPage === "laborTargets"
+  const canOpenAdminPage = ["laborTargets", "venues"].includes(initialAdminPage)
     ? hasLaborTargetsAccess(access)
     : hasAdminDashboardAccess(access);
 

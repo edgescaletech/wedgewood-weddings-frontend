@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { hasAdminDashboardAccess, hasLaborTargetsAccess } from "../context/identity-permissions.js";
 import AdminHeader from "./AdminHeader.jsx";
 import LaborTargets from "./LaborTargets.jsx";
+import Venues from "../pages/venues.jsx";
 import UsersAccess from "./UsersAccess.jsx";
 import { createAdminApi, userPath } from "./api.js";
 import { adminPageForPath } from "./navigation.js";
@@ -45,7 +46,7 @@ export default function AdminDashboard({ initialPage }) {
   }, [user?.id, canReadProfile]);
 
   useEffect(() => {
-    document.title = page === "laborTargets"
+    document.title = page === "venues" ? "Wedgewood Weddings · Venues" : page === "laborTargets"
       ? "Wedgewood Weddings · Labor Efficiency Targets"
       : "Wedgewood Weddings · Users & Access";
   }, [page]);
@@ -65,10 +66,13 @@ export default function AdminDashboard({ initialPage }) {
       {canViewUsers && visited.has("users") && (
         <div hidden={page !== "users"}><UsersAccess /></div>
       )}
+      {canViewTargets && visited.has("venues") && (
+        <div hidden={page !== "venues"}><Venues /></div>
+      )}
       {canViewTargets && visited.has("laborTargets") && (
         <div hidden={page !== "laborTargets"}><LaborTargets /></div>
       )}
-      {((page === "users" && !canViewUsers) || (page === "laborTargets" && !canViewTargets)) && (
+      {((page === "users" && !canViewUsers) || (["laborTargets", "venues"].includes(page) && !canViewTargets)) && (
         <main className="ux-page"><p role="alert">You do not have access to this section.</p></main>
       )}
     </div>

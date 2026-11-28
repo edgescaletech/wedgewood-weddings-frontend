@@ -10,6 +10,7 @@ export default function AdminHeader({ page, displayName, onNavigate }) {
     ? ["Regional Manager", ...globalRoles].join(" · ")
     : globalRoles.join(", ");
   const links = [
+    { id: "venues", href: "/venues", label: "Venues", visible: hasLaborTargetsAccess(access) },
     { id: "users", href: "/admin/users", label: "Users & access", visible: hasAdminDashboardAccess(access) },
     { id: "laborTargets", href: "/admin/labor-targets", label: "Labor efficiency targets", visible: hasLaborTargetsAccess(access) },
   ];

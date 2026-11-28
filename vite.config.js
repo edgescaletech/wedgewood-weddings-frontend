@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 const projectDir = dirname(fileURLToPath(import.meta.url));
 
 const pageEntries = {
+  '/venues': '/admin/labor-targets.html',
+  '/venues/index.html': '/admin/labor-targets.html',
+  '/admin-goals': '/admin/labor-targets.html',
+  '/admin-goals.html': '/admin/labor-targets.html',
+  '/admin/goals': '/admin/labor-targets.html',
   '/about': '/about/index.html',
   '/invite': '/invite/index.html',
   '/staffing': '/staffing/index.html',

@@ -319,3 +319,13 @@ test("venue paging and preloading keep region filters in separate caches", async
     ["0", "oak", "Southern California"],
   ]);
 });
+
+// WED-21 pages share the existing Admin navigation and access boundary.
+test("RM venues and legacy labor target links resolve within Admin navigation", () => {
+  for (const path of ["/venues", "/venues/", "/venues/index.html"]) {
+    assert.equal(adminPageForPath(path), "venues");
+  }
+  for (const path of ["/admin-goals", "/admin-goals/", "/admin-goals.html", "/admin/goals"]) {
+    assert.equal(adminPageForPath(path), "laborTargets");
+  }
+});

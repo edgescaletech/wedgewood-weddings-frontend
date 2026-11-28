@@ -1,3 +1,4 @@
+import { syncWarningText } from './event-sync.js';
 import React from 'react';
 
 function formatTime(val) {
@@ -91,6 +92,7 @@ export default function BeoPdfModal({ event, currentVenue, isOpen, onClose }) {
 <body>
   <h1>SAMPLE BEO - ${venueName.toUpperCase()}</h1>
   <h2>${event.name}</h2>
+ ${syncWarningText(event) ? `<p style="padding:12px;background:#fffbeb;color:#92400e">${syncWarningText(event)}</p>` : ''}
   <p>${event.eventDate || '2026-11-29'} | ${guestCount} guests</p>
   <p>Ceremony ${ceremonyTime} | ${event.ceremonyLocation || 'Garden'}</p>
   <p>Event ${event.startTime || '17:00'} - ${event.endTime || '22:00'}</p>
@@ -117,6 +119,7 @@ export default function BeoPdfModal({ event, currentVenue, isOpen, onClose }) {
 
   return (
     <main className="beo-page-container">
+ {syncWarningText(event) && <p className="event-sync-warning" role="status">{syncWarningText(event)}</p>}
       <div className="beo-view-card">
         {/* Row 1: Title and Back to schedule */}
         <div className="beo-top-header-row">
