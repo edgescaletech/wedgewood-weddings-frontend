@@ -1,3 +1,4 @@
+import { syncWarningText } from '../components/Schedule/event-sync.js';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../config.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -75,7 +76,7 @@ export default function StaffingPage() {
   const matchingDetails = eventDetails?.id === selectedEvent?.id &&
     eventDetails?.venueId === selectedEvent?.venueId;
   const activeEvent = currentVenue && selectedEvent?.venueId === currentVenue.id
-    ? (matchingDetails ? eventDetails : selectedEvent)
+    ? (matchingDetails ? { ...selectedEvent, ...eventDetails } : selectedEvent)
     : null;
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [isBeoView, setIsBeoView] = useState(() => window.location.hash === '#beo');
@@ -354,6 +355,7 @@ export default function StaffingPage() {
         />
       ) : (
         <>
+          {!showEventDetails && syncWarningText(activeEvent) && <p className="workspace-main event-sync-warning" role="status">{syncWarningText(activeEvent)}</p>}
           <StatusBanner
             publishedCount={venueEvents.length}
             totalEvents={venueEvents.length}

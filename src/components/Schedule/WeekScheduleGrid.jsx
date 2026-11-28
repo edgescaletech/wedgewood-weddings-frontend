@@ -1,3 +1,4 @@
+import { syncWarningText } from './event-sync.js';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -155,11 +156,13 @@ export default function WeekScheduleGrid({ weekStart, events = [], venueId }) {
               <th className="worker-header-cell">Worker / week hours</th>
               {days.map(day => {
                 const primary = day.events[0];
+                const unverifiedEvent = day.events.find(event => event.syncStatus === 'unverified');
                 return (
                   <th key={day.dateStr} className="day-col-header-cell">
                     <div className="col-day-title">{day.dayLabel}</div>
                     <div className="col-day-event" title={primary?.name || 'No events'}>
                       {primary ? primary.name : 'No events'}
+ {syncWarningText(unverifiedEvent) && <span className="sync-unverified-badge" title={syncWarningText(unverifiedEvent)}>Unverified sync</span>}
                     </div>
                     <div className="col-day-shifts-tag">
                       <span className="warning-icon">⚠</span> No shifts

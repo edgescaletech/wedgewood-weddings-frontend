@@ -1,3 +1,4 @@
+import { syncWarningText } from './event-sync.js';
 import React, { useState } from 'react';
 
 function formatTime(val) {
@@ -34,10 +35,10 @@ function parseSignatureDrinks(raw) {
 }
 
 export default function EventDetailsModal({ event, isOpen, onClose }) {
-  if (!isOpen || !event) return null;
-
   const [setupExpanded, setSetupExpanded] = useState(true);
   const [gmNote, setGmNote] = useState('');
+
+  if (!isOpen || !event) return null;
 
   const q = event.catering || {};
   const guestCount = event.guestCount || 0;
@@ -71,6 +72,7 @@ export default function EventDetailsModal({ event, isOpen, onClose }) {
 
   return (
     <section className="event-details-panel" id="event-details-container">
+ {syncWarningText(event) && <p className="event-sync-warning" role="status">{syncWarningText(event)}</p>}
       {/* 4 Top Summary Cards */}
       <div className="event-summary-cards-row">
         {/* Card 1: Guests */}

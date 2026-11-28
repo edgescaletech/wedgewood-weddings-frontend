@@ -1,3 +1,4 @@
+import { syncWarningText } from './event-sync.js';
 import React from 'react';
 
 export default function DayActionBar({
@@ -36,7 +37,7 @@ export default function DayActionBar({
             >
               {events.map(evt => (
                 <option key={evt.id} value={evt.id}>
-                  {evt.name}{evt.guestCount ? ` (${evt.guestCount} guests)` : ''}
+                  {evt.name}{evt.guestCount ? ` (${evt.guestCount} guests)` : ''}{syncWarningText(evt) ? ' · Unverified sync' : ''}
                 </option>
               ))}
             </select>

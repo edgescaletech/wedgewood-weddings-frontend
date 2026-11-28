@@ -1,3 +1,4 @@
+import { syncWarningText } from './event-sync.js';
 import React from 'react';
 
 export default function WeekRibbon({
@@ -57,6 +58,7 @@ export default function WeekRibbon({
         {days.map(day => {
           const hasEvents = day.events.length > 0;
           const primaryEvent = day.events[0];
+          const unverifiedEvent = day.events.find(event => event.syncStatus === 'unverified');
           const isSelected = day.isSelected;
 
           if (!hasEvents) {
@@ -99,6 +101,7 @@ export default function WeekRibbon({
                 </div>
                 <div className="day-event-title" title={primaryEvent.name}>
                   {primaryEvent.name}
+ {syncWarningText(unverifiedEvent) && <span className="sync-unverified-badge" title={syncWarningText(unverifiedEvent)}>Unverified sync</span>}
                 </div>
                 <div className="day-event-meta">
                   {primaryEvent.guestCount ? `${primaryEvent.guestCount} guests` : '60 guests'} · 5 hours
